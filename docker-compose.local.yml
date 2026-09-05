@@ -1,0 +1,23 @@
+# Extras SÓLO para correr el stack en tu máquina.
+# Coolify no lee este archivo (usa únicamente docker-compose.yml).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+#
+# Puertos por defecto elegidos para no chocar con el `npm run start:dev` del
+# backend (3000), el `npm run dev` de Vite (5173) ni un Postgres local (5432).
+# Se pueden cambiar en el .env con LOCAL_WEB_PORT / LOCAL_API_PORT / LOCAL_DB_PORT.
+#
+# Frontend: http://localhost:8080   API: http://localhost:3001   Postgres: localhost:5433
+
+services:
+  db:
+    ports:
+      - '${LOCAL_DB_PORT:-5433}:5432'
+
+  backend:
+    ports:
+      - '${LOCAL_API_PORT:-3001}:3000'
+
+  frontend:
+    ports:
+      - '${LOCAL_WEB_PORT:-8080}:80'
