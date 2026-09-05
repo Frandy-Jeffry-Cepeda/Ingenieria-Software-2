@@ -1,0 +1,69 @@
+# Stack completo de Inventario TI: Postgres + API NestJS + SPA React tras nginx.
+# Este archivo es el que consume Coolify (Resource -> Docker Compose).
+# Sólo el servicio `frontend` se publica; `backend` y `db` quedan en la red interna.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?definir POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-inventario_ti}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - inventario-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'pg_isready -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-inventario_ti}"']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASS: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB:-inventario_ti}
+      # TypeORM crea/actualiza el esquema solo. Poner en 'false' si algún día se usan migraciones.
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
+      JWT_SECRET: ${JWT_SECRET:?definir JWT_SECRET}
+      # Carga los datos de ejemplo la primera vez (admin@ti.com / admin123). Es idempotente.
+      SEED_ON_START: ${SEED_ON_START:-true}
+    expose:
+      - '3000'
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # /api = el propio nginx hace de proxy hacia el backend (mismo dominio, sin CORS)
+        VITE_API_URL: ${VITE_API_URL:-/api}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      # Variable mágica de Coolify: genera el dominio público y las labels de
+      # Traefik apuntando al puerto 80 de este servicio. Va en sintaxis de mapa
+      # con valor vacío; en sintaxis de lista Coolify rompe el compose
+      # ("non-string key in services.frontend.environment: 0").
+      SERVICE_FQDN_FRONTEND_80:
+      BACKEND_ORIGIN: backend:3000
+    expose:
+      - '80'
+
+volumes:
+  inventario-pgdata:
