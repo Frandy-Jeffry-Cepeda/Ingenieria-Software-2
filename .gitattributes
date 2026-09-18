@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Los scripts de shell y los ganchos de Git deben conservar finales de línea
+# de Unix, o Git Bash no los ejecuta en Windows.
+*.sh        text eol=lf
+pre-push    text eol=lf

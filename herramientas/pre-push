@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# =====================================================================
+#  Gancho pre-push — INF-5250 · Equipo 6 · Unidad 7
+#
+#  Regla del equipo: a la rama principal solo se entra por fusión de una
+#  solicitud revisada. Este gancho rechaza cualquier commit que intente
+#  aterrizar directamente en main.
+#
+#  Instalar:  cp pre-push .git/hooks/pre-push
+#             chmod +x .git/hooks/pre-push
+#
+#  Es un control local: se puede saltar con  git push --no-verify.
+#  Esa es, justamente, la diferencia entre una práctica acordada por el
+#  equipo y una impuesta por el servidor.
+# =====================================================================
+
+PROTEGIDA="main"
+VACIO="0000000000000000000000000000000000000000"
+
+while read -r _ref_local sha_local ref_remoto sha_remoto; do
+  rama="${ref_remoto#refs/heads/}"
+  [ "$rama" != "$PROTEGIDA" ] && continue
+  [ "$sha_local" = "$VACIO" ] && continue          # borrado de rama
+  [ "$sha_remoto" = "$VACIO" ] && continue         # primera publicación
+
+  # Commits que aterrizan en la línea principal sin ser una fusión
+  directos=$(git rev-list --first-parent --no-merges --count "$sha_remoto..$sha_local")
+
+  if [ "$directos" -gt 0 ]; then
+    echo ""
+    echo "  ┌──────────────────────────────────────────────────────────────┐"
+    echo "  │  ENVÍO RECHAZADO                                             │"
+    echo "  └──────────────────────────────────────────────────────────────┘"
+    echo ""
+    echo "  Intentas enviar $directos commit(s) directamente a '$PROTEGIDA'."
+    echo ""
+    echo "  Regla del Equipo 6: a la rama principal solo se entra por"
+    echo "  fusión de una solicitud revisada y aprobada por otro integrante."
+    echo ""
+    echo "  Qué hacer:"
+    echo "    git switch -c mejora/descripcion-corta"
+    echo "    git push -u origin mejora/descripcion-corta"
+    echo "    ...y abre la solicitud de fusión en GitHub."
+    echo ""
+    exit 1
+  fi
+done
+
+exit 0
