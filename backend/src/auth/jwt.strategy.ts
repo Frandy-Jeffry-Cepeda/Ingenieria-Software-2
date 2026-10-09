@@ -1,6 +1,12 @@
+
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+
+interface JwtPayload {
+  sub: number;
+  nombre: string;
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -11,7 +17,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: any) {
-    return { id: payload.sub, nombre: payload.nombre };
+// Eliminamos el uso de any en validate y definimos que el token debe contener sub y nombre. (A.J.A.D)
+
+  validate(payload: JwtPayload) {
+    return {
+      id: payload.sub,
+      nombre: payload.nombre,
+    };
   }
 }
