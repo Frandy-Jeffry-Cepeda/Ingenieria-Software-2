@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Modal, Form, Button } from 'react-bootstrap';
+import PropTypes from 'prop-types';
 
 function ModalBaja({ show, onCerrar, onDarDeBaja }) {
   const [motivo, setMotivo] = useState('desahucio');
@@ -56,5 +57,11 @@ function ModalBaja({ show, onCerrar, onDarDeBaja }) {
     </Modal>
   );
 }
+
+ModalBaja.propTypes = {
+  show: PropTypes.bool.isRequired,
+  onCerrar: PropTypes.func.isRequired,
+  onDarDeBaja: PropTypes.func.isRequired,
+}; //Aqui establecemos que los props show, onCerrar y onDarDeBaja son obligatorios y deben ser de tipo booleano y función respectivamente. (A.J.A.D)
 
 export default ModalBaja;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, Form, Button } from 'react-bootstrap';
 import { getUsuarios } from '../api/api';
+import PropTypes from 'prop-types'; // Agregamos el import de PropTypes para validar los props del componente ModalEntrega. (A.J.A.D)
 
 function ModalEntrega({ show, onCerrar, onEntregar }) {
   const [empleados, setEmpleados] = useState([]);
@@ -57,5 +58,12 @@ function ModalEntrega({ show, onCerrar, onEntregar }) {
     </Modal>
   );
 }
+
+
+ModalEntrega.propTypes = {
+  show: PropTypes.bool.isRequired,
+  onCerrar: PropTypes.func.isRequired,
+  onEntregar: PropTypes.func.isRequired,
+}; //Aqui establecemos que los props show, onCerrar y onEntregar son obligatorios y deben ser de tipo booleano y función respectivamente. (A.J.A.D)
 
 export default ModalEntrega;
