@@ -12,7 +12,7 @@ import {
 import EstadoBadge from '../components/EstadoBadge';
 import ModalEntrega from '../components/ModalEntrega';
 import ModalBaja from '../components/ModalBaja';
-
+import ModalMantenimiento from '../components/ModalMantenimiento';
 function DetalleEquipo() {
   const { id } = useParams();
   const [equipo, setEquipo] = useState(null);
@@ -20,6 +20,7 @@ function DetalleEquipo() {
   const [error, setError] = useState('');
   const [mostrarEntrega, setMostrarEntrega] = useState(false);
   const [mostrarBaja, setMostrarBaja] = useState(false);
+  const [mostrarMantenimiento, setMostrarMantenimiento] = useState(false);
   const [editando, setEditando] = useState(false);
   const [marca, setMarca] = useState('');
   const [modelo, setModelo] = useState('');
@@ -188,9 +189,26 @@ function DetalleEquipo() {
         show={mostrarBaja}
         onCerrar={() => setMostrarBaja(false)}
         onDarDeBaja={darDeBaja}
-      />
+      />const handleEnviarMantenimiento = async (datos) => {
+  try 
+  <Button variant="warning" onClick={() => setMostrarMantenimiento(true)}>
+  Enviar a mantenimiento
+</Button>{
+    await api.post(`/equipos/${id}/mantenimiento`, datos);
+    alert('Equipo enviado a mantenimiento con éxito');
+    setMostrarMantenimiento(false);
+    cargar(); // Recarga los datos del equipo para actualizar la vista
+  } catch (err) {
+    alert(err.response?.data?.message || 'Error al enviar a mantenimiento');
+  }
+};
     </>
   );
 }
+<ModalMantenimiento
+  show={mostrarMantenimiento}
+  onCerrar={() => setMostrarMantenimiento(false)}
+  onEnviarMantenimiento={handleEnviarMantenimiento}
+/>
 
 export default DetalleEquipo;
