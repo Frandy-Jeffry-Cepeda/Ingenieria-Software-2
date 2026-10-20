@@ -12,6 +12,7 @@ import {
 import { EquiposService } from './equipos.service';
 import { EstadoEquipo } from './equipo.entity';
 import { ActualizarEquipoDto, BajaEquipoDto, DevolverEquipoDto, EntregarEquipoDto } from './equipos.dto';
+import { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 @Controller('equipos')
 export class EquiposController {
@@ -42,18 +43,31 @@ export class EquiposController {
     return this.equiposService.actualizar(id, dto);
   }
 
+  
   @Post(':id/entrega')
-  entregar(@Param('id', ParseIntPipe) id: number, @Body() dto: EntregarEquipoDto, @Req() req: any) {
+  entregar(
+  @Param('id', ParseIntPipe) id: number,
+  @Body() dto: EntregarEquipoDto,
+  @Req() req: AuthenticatedRequest,
+  ) {
     return this.equiposService.entregar(id, dto, req.user.id);
   }
 
   @Post(':id/devolucion')
-  devolver(@Param('id', ParseIntPipe) id: number, @Body() dto: DevolverEquipoDto, @Req() req: any) {
+  devolver(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DevolverEquipoDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
     return this.equiposService.devolver(id, dto, req.user.id);
   }
 
   @Post(':id/baja')
-  darDeBaja(@Param('id', ParseIntPipe) id: number, @Body() dto: BajaEquipoDto, @Req() req: any) {
+  darDeBaja(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: BajaEquipoDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
     return this.equiposService.darDeBaja(id, dto, req.user.id);
-  }
+  } //Agregamos el parámetro req de tipo AuthenticatedRequest para acceder al id del usuario autenticado y pasarlo al servicio de equipos.
 }

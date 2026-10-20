@@ -1,5 +1,6 @@
 import { createContext, useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PropTypes from 'prop-types';
 
 const AuthContext = createContext(null);
 
@@ -29,6 +30,10 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+}; //Aqui establecemos que el prop children es obligatorio, asi evitamos que el componente padre lo omita o pase un tipo incorrecto. (A.J.A.D)
 
 export function useAuth() {
   return useContext(AuthContext);
