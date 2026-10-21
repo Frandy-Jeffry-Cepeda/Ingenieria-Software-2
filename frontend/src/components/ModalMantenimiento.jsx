@@ -1,74 +1,66 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
+import { useEffect, useState } from 'react';
+import { Modal, Form, Button } from 'react-bootstrap';
 
 function ModalMantenimiento({ show, onCerrar, onEnviarMantenimiento }) {
   const [descripcion, setDescripcion] = useState('');
   const [tecnico, setTecnico] = useState('');
   const [fecha, setFecha] = useState('');
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!descripcion || !tecnico || !fecha) {
-      alert("Por favor completa todos los campos obligatorios.");
-      return;
+  useEffect(() => {
+    if (show) {
+      setDescripcion('');
+      setTecnico('');
+      setFecha('');
     }
-    // Envía los tres campos requeridos al backend
+  }, [show]);
+
+  const confirmar = (e) => {
+    e.preventDefault();
     onEnviarMantenimiento({ descripcion, tecnico, fecha });
   };
 
-  if (!show) return null;
-
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h3>Enviar equipo a mantenimiento</h3>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Descripción del problema:</label>
-            <textarea
+    <Modal show={show} onHide={onCerrar}>
+      <Form onSubmit={confirmar}>
+        <Modal.Header closeButton>
+          <Modal.Title>Enviar a mantenimiento</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-3">
+            <Form.Label>Descripci&oacute;n del problema</Form.Label>
+            <Form.Control
+              as="textarea"
               rows={3}
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="Detalle el motivo del mantenimiento..."
               required
             />
-          </div>
-
-          <div className="form-group">
-            <label>Técnico responsable:</label>
-            <input
-              type="text"
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>T&eacute;cnico responsable</Form.Label>
+            <Form.Control
               value={tecnico}
               onChange={(e) => setTecnico(e.target.value)}
-              placeholder="Nombre del técnico"
               required
             />
-          </div>
-
-          <div className="form-group">
-            <label>Fecha programada:</label>
-            <input
+          </Form.Group>
+          <Form.Group>
+            <Form.Label>Fecha programada</Form.Label>
+            <Form.Control
               type="date"
               value={fecha}
               onChange={(e) => setFecha(e.target.value)}
               required
             />
-          </div>
-
-          <div className="modal-actions">
-            <button type="button" onClick={onCerrar}>Cancelar</button>
-            <button type="submit">Confirmar</button>
-          </div>
-        </form>
-      </div>
-    </div>
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={onCerrar}>Cancelar</Button>
+          <Button type="submit" variant="warning">Confirmar</Button>
+        </Modal.Footer>
+      </Form>
+    </Modal>
   );
 }
-
-ModalMantenimiento.propTypes = {
-  show: PropTypes.bool.isRequired,
-  onCerrar: PropTypes.func.isRequired,
-  onEnviarMantenimiento: PropTypes.func.isRequired,
-};
 
 export default ModalMantenimiento;

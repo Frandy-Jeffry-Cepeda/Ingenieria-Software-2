@@ -52,3 +52,5 @@ export const devolverEquipo = (id, datos) =>
   api.post(`/equipos/${id}/devolucion`, datos).then((r) => r.data);
 export const darDeBajaEquipo = (id, datos) =>
   api.post(`/equipos/${id}/baja`, datos).then((r) => r.data);
+export const enviarMantenimientoEquipo = (id, datos) =>
+  api.post(`/equipos/${id}/mantenimiento`, datos).then((r) => r.data);
