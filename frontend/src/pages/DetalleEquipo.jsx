@@ -14,6 +14,7 @@ import EstadoBadge from '../components/EstadoBadge';
 import ModalEntrega from '../components/ModalEntrega';
 import ModalBaja from '../components/ModalBaja';
 import ModalMantenimiento from '../components/ModalMantenimiento';
+import ListaOrdenes from '../components/ListaOrdenes';
 
 function DetalleEquipo() {
   const { id } = useParams();
@@ -194,6 +195,8 @@ function DetalleEquipo() {
           )}
         </tbody>
       </Table>
+
+      <ListaOrdenes key={equipo.estado} equipoId={id} />
 
       <ModalEntrega
         show={mostrarEntrega}
