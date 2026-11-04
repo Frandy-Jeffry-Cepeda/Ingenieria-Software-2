@@ -13,6 +13,8 @@ import { Usuario } from '../usuarios/usuario.entity';
 export enum EstadoEquipo {
   DISPONIBLE = 'disponible',
   ENTREGADO = 'entregado',
+  // Estado temporal mientras existe una orden de mantenimiento abierta.
+  EN_MANTENIMIENTO = 'en_mantenimiento',
   DE_BAJA = 'de_baja',
 }
 

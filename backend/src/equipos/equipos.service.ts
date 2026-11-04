@@ -1,17 +1,30 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 import { Equipo, EstadoEquipo } from './equipo.entity';
+import { Mantenimiento } from './mantenimiento.entity';
 import { Movimiento, TipoMovimiento } from './movimiento.entity';
 import { Usuario, RolUsuario } from '../usuarios/usuario.entity';
-import { ActualizarEquipoDto, BajaEquipoDto, DevolverEquipoDto, EntregarEquipoDto } from './equipos.dto';
+import {
+  ActualizarEquipoDto,
+  BajaEquipoDto,
+  CrearMantenimientoDto,
+  DevolverEquipoDto,
+  EntregarEquipoDto,
+} from './equipos.dto';
+import { MailtrapService } from '../integraciones/mailtrap/mailtrap.service';
 
 @Injectable()
 export class EquiposService {
-  // única fuente de verdad de la máquina de estados
+  // Aquí se definen los únicos cambios de estado permitidos para un equipo.
   private readonly transiciones: Record<EstadoEquipo, EstadoEquipo[]> = {
-    [EstadoEquipo.DISPONIBLE]: [EstadoEquipo.ENTREGADO, EstadoEquipo.DE_BAJA],
+    [EstadoEquipo.DISPONIBLE]: [
+      EstadoEquipo.ENTREGADO,
+      EstadoEquipo.EN_MANTENIMIENTO,
+      EstadoEquipo.DE_BAJA,
+    ],
     [EstadoEquipo.ENTREGADO]: [EstadoEquipo.DISPONIBLE],
+    [EstadoEquipo.EN_MANTENIMIENTO]: [EstadoEquipo.DISPONIBLE],
     [EstadoEquipo.DE_BAJA]: [],
   };
 
@@ -20,13 +33,31 @@ export class EquiposService {
     @InjectRepository(Movimiento) private movimientosRepo: Repository<Movimiento>,
     @InjectRepository(Usuario) private usuariosRepo: Repository<Usuario>,
     private dataSource: DataSource,
+    private mailtrapService: MailtrapService,
   ) {}
 
-  private cambiarEstado(equipo: Equipo, nuevoEstado: EstadoEquipo, mensajeError: string) {
+  // Se bloquea el equipo dentro de la transacción para evitar dos cambios al mismo tiempo.
+  private async cambiarEstado(
+    manager: EntityManager,
+    equipoId: number,
+    nuevoEstado: EstadoEquipo,
+    mensajeError: string,
+  ) {
+    const equipo = await manager.findOne(Equipo, {
+      where: { id: equipoId },
+      lock: { mode: 'pessimistic_write' },
+    });
+
+    if (!equipo) {
+      throw new NotFoundException('Equipo no encontrado');
+    }
+
     if (!this.transiciones[equipo.estado].includes(nuevoEstado)) {
       throw new BadRequestException(mensajeError);
     }
+
     equipo.estado = nuevoEstado;
+    return equipo;
   }
 
   listar(estado?: EstadoEquipo, q?: string) {
@@ -94,14 +125,20 @@ export class EquiposService {
   }
 
   async entregar(id: number, dto: EntregarEquipoDto, tecnicoId: number) {
-    const equipo = await this.detalle(id);
     const empleado = await this.usuariosRepo.findOneBy({ id: dto.usuarioId });
     if (!empleado || !empleado.activo || empleado.rol !== RolUsuario.EMPLEADO) {
       throw new BadRequestException('El destinatario debe ser un empleado activo');
     }
-    this.cambiarEstado(equipo, EstadoEquipo.ENTREGADO, 'El equipo no está disponible para entrega');
-    equipo.usuarioActualId = empleado.id;
+
     await this.dataSource.transaction(async (manager) => {
+      const equipo = await this.cambiarEstado(
+        manager,
+        id,
+        EstadoEquipo.ENTREGADO,
+        'El equipo no está disponible para entrega',
+      );
+      equipo.usuarioActualId = empleado.id;
+
       await manager.save(Movimiento, {
         equipoId: equipo.id,
         tipo: TipoMovimiento.ENTREGA,
@@ -109,20 +146,23 @@ export class EquiposService {
         tecnicoId,
         observacion: dto.observacion,
       });
-      await manager.update(Equipo, equipo.id, {
-        estado: equipo.estado,
-        usuarioActualId: equipo.usuarioActualId,
-      });
+      await manager.save(Equipo, equipo);
     });
+
     return this.detalle(id);
   }
 
   async devolver(id: number, dto: DevolverEquipoDto, tecnicoId: number) {
-    const equipo = await this.detalle(id);
-    const empleadoId = equipo.usuarioActualId;
-    this.cambiarEstado(equipo, EstadoEquipo.DISPONIBLE, 'El equipo no está entregado, no hay nada que devolver');
-    equipo.usuarioActualId = null;
     await this.dataSource.transaction(async (manager) => {
+      const equipo = await this.cambiarEstado(
+        manager,
+        id,
+        EstadoEquipo.DISPONIBLE,
+        'El equipo no está entregado, no hay nada que devolver',
+      );
+      const empleadoId = equipo.usuarioActualId;
+      equipo.usuarioActualId = null;
+
       await manager.save(Movimiento, {
         equipoId: equipo.id,
         tipo: TipoMovimiento.DEVOLUCION,
@@ -130,18 +170,21 @@ export class EquiposService {
         tecnicoId,
         observacion: dto.observacion,
       });
-      await manager.update(Equipo, equipo.id, {
-        estado: equipo.estado,
-        usuarioActualId: null,
-      });
+      await manager.save(Equipo, equipo);
     });
+
     return this.detalle(id);
   }
 
   async darDeBaja(id: number, dto: BajaEquipoDto, tecnicoId: number) {
-    const equipo = await this.detalle(id);
-    this.cambiarEstado(equipo, EstadoEquipo.DE_BAJA, 'Solo un equipo disponible puede darse de baja');
     await this.dataSource.transaction(async (manager) => {
+      const equipo = await this.cambiarEstado(
+        manager,
+        id,
+        EstadoEquipo.DE_BAJA,
+        'Solo un equipo disponible puede darse de baja',
+      );
+
       await manager.save(Movimiento, {
         equipoId: equipo.id,
         tipo: TipoMovimiento.SALIDA,
@@ -149,8 +192,83 @@ export class EquiposService {
         tecnicoId,
         observacion: dto.observacion,
       });
-      await manager.update(Equipo, equipo.id, { estado: equipo.estado });
+      await manager.save(Equipo, equipo);
     });
+
+    return this.detalle(id);
+  }
+
+  async enviarMantenimiento(id: number, dto: CrearMantenimientoDto, tecnicoId: number) {
+    const orden = await this.dataSource.transaction(async (manager) => {
+      const equipo = await this.cambiarEstado(
+        manager,
+        id,
+        EstadoEquipo.EN_MANTENIMIENTO,
+        'Solo un equipo disponible puede enviarse a mantenimiento',
+      );
+
+      const nuevaOrden = await manager.save(Mantenimiento, {
+        equipoId: equipo.id,
+        descripcion: dto.descripcion,
+        fecha: dto.fecha,
+        tecnico: dto.tecnico,
+        fechaFinalizacion: null,
+      });
+
+      await manager.save(Movimiento, {
+        equipoId: equipo.id,
+        tipo: TipoMovimiento.MANTENIMIENTO,
+        tecnicoId,
+        observacion: dto.descripcion,
+      });
+
+      await manager.save(Equipo, equipo);
+      return nuevaOrden;
+    });
+
+    // El correo se envía después de guardar los datos para no dejar una transacción abierta.
+    const equipo = await this.detalle(id);
+    const notificacion = await this.mailtrapService.enviarAvisoMantenimiento({
+      numeroSerie: equipo.numeroSerie,
+      descripcion: orden.descripcion,
+      fecha: orden.fecha,
+      tecnico: orden.tecnico,
+    });
+
+    return { orden, equipo, notificacion };
+  }
+
+  async finalizarMantenimiento(id: number, tecnicoId: number) {
+    await this.dataSource.transaction(async (manager) => {
+      const equipo = await this.cambiarEstado(
+        manager,
+        id,
+        EstadoEquipo.DISPONIBLE,
+        'El equipo no se encuentra en mantenimiento',
+      );
+
+      const orden = await manager.findOne(Mantenimiento, {
+        where: { equipoId: id, fechaFinalizacion: IsNull() },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!orden) {
+        throw new BadRequestException('No existe una orden de mantenimiento pendiente');
+      }
+
+      orden.fechaFinalizacion = new Date();
+      await manager.save(Mantenimiento, orden);
+      await manager.save(Movimiento, {
+        equipoId: equipo.id,
+        tipo: TipoMovimiento.FIN_MANTENIMIENTO,
+        tecnicoId,
+        observacion: `Mantenimiento finalizado: ${orden.descripcion}`,
+      });
+      await manager.save(Equipo, equipo);
+    });
+
     return this.detalle(id);
   }
 }
+
+// (A J A D)
