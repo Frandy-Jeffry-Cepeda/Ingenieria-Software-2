@@ -14,6 +14,9 @@ export enum TipoMovimiento {
   ENTREGA = 'entrega',
   DEVOLUCION = 'devolucion',
   SALIDA = 'salida',
+  // Registra el inicio y el cierre del mantenimiento en el historial.
+  MANTENIMIENTO = 'mantenimiento',
+  FIN_MANTENIMIENTO = 'fin_mantenimiento',
 }
 
 export enum MotivoSalida {
@@ -66,3 +69,5 @@ export class Movimiento {
   @CreateDateColumn({ name: 'fecha' })
   fecha: Date;
 }
+
+// (A J A D)
