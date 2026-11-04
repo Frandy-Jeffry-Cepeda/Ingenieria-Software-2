@@ -13,6 +13,7 @@ export class EquiposService {
     [EstadoEquipo.DISPONIBLE]: [EstadoEquipo.ENTREGADO, EstadoEquipo.DE_BAJA],
     [EstadoEquipo.ENTREGADO]: [EstadoEquipo.DISPONIBLE],
     [EstadoEquipo.DE_BAJA]: [],
+    [EstadoEquipo.EN_MANTENIMIENTO]: [EstadoEquipo.DISPONIBLE], 
   };
 
   constructor(

@@ -6,17 +6,22 @@ const colores = {
   disponible: 'success',
   entregado: 'primary',
   de_baja: 'secondary',
+  en_mantenimiento: 'warning',
 };
 
 const textos = {
   disponible: 'Disponible',
   entregado: 'Entregado',
   de_baja: 'De baja',
+  en_mantenimiento: 'En mantenimiento',
 };
 
 function EstadoBadge({ estado }) {
   return (
-    <Badge bg={colores[estado] || 'light'}>
+    <Badge 
+      bg={colores[estado] || 'light'} 
+      text={estado === 'en_mantenimiento' ? 'dark' : 'light'}
+    >
       {textos[estado] || estado}
     </Badge>
   );
@@ -27,6 +32,7 @@ EstadoBadge.propTypes = {
     'disponible',
     'entregado',
     'de_baja',
+    'en_mantenimiento',
   ]).isRequired,
 }; //Aqui establecemos que el prop estado debe ser uno de los valores especificados y es obligatorio para los equipos que se ingresen. (A.J.A.D)
 
