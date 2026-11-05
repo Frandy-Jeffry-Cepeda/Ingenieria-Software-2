@@ -8,10 +8,13 @@ import {
   entregarEquipo,
   devolverEquipo,
   darDeBajaEquipo,
+  enviarMantenimientoEquipo,
 } from '../api/api';
 import EstadoBadge from '../components/EstadoBadge';
 import ModalEntrega from '../components/ModalEntrega';
 import ModalBaja from '../components/ModalBaja';
+import ModalMantenimiento from '../components/ModalMantenimiento';
+import ListaOrdenes from '../components/ListaOrdenes';
 
 function DetalleEquipo() {
   const { id } = useParams();
@@ -20,6 +23,7 @@ function DetalleEquipo() {
   const [error, setError] = useState('');
   const [mostrarEntrega, setMostrarEntrega] = useState(false);
   const [mostrarBaja, setMostrarBaja] = useState(false);
+  const [mostrarMantenimiento, setMostrarMantenimiento] = useState(false);
   const [editando, setEditando] = useState(false);
   const [marca, setMarca] = useState('');
   const [modelo, setModelo] = useState('');
@@ -64,6 +68,16 @@ function DetalleEquipo() {
       cargar();
     } catch (err) {
       alert(err.response?.data?.message || 'Error al dar de baja el equipo');
+    }
+  };
+
+  const enviarMantenimiento = async (datos) => {
+    try {
+      await enviarMantenimientoEquipo(id, datos);
+      setMostrarMantenimiento(false);
+      cargar();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error al enviar a mantenimiento');
     }
   };
 
@@ -131,6 +145,9 @@ function DetalleEquipo() {
                     <Button variant="danger" className="me-2" onClick={() => setMostrarBaja(true)}>
                       Dar de baja
                     </Button>
+                    <Button variant="warning" className="me-2" onClick={() => setMostrarMantenimiento(true)}>
+                      Enviar a mantenimiento
+                    </Button>
                   </>
                 )}
                 {equipo.estado === 'entregado' && (
@@ -179,6 +196,8 @@ function DetalleEquipo() {
         </tbody>
       </Table>
 
+      <ListaOrdenes key={equipo.estado} equipoId={id} />
+
       <ModalEntrega
         show={mostrarEntrega}
         onCerrar={() => setMostrarEntrega(false)}
@@ -188,6 +207,11 @@ function DetalleEquipo() {
         show={mostrarBaja}
         onCerrar={() => setMostrarBaja(false)}
         onDarDeBaja={darDeBaja}
+      />
+      <ModalMantenimiento
+        show={mostrarMantenimiento}
+        onCerrar={() => setMostrarMantenimiento(false)}
+        onEnviarMantenimiento={enviarMantenimiento}
       />
     </>
   );
