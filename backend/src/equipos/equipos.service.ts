@@ -114,12 +114,19 @@ export class EquiposService {
     const equipo = await this.detalle(id);
     Object.assign(equipo, dto);
     try {
-      await this.equiposRepo.save(equipo);
-    } catch (error) {
-      if (error.code === '23505') {
-        throw new BadRequestException('Ya existe un equipo con ese número de serie');
-      }
-      throw error;
+  await this.equiposRepo.save(equipo);
+} catch (error) {
+  if (error instanceof Error && 'driverError' in error) {
+    const driverError = error.driverError as { code?: string };
+
+    if (driverError.code === '23505') {
+      throw new BadRequestException(
+        'Ya existe un equipo con ese número de serie',
+      );
+    }
+  }
+
+  throw error;
     }
     return this.detalle(id);
   }

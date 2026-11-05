@@ -1,3 +1,4 @@
+
 import {
   Column,
   CreateDateColumn,
@@ -7,13 +8,13 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+
 import { Compra } from '../compras/compra.entity';
 import { Usuario } from '../usuarios/usuario.entity';
 
 export enum EstadoEquipo {
   DISPONIBLE = 'disponible',
   ENTREGADO = 'entregado',
-  // Estado temporal mientras existe una orden de mantenimiento abierta.
   EN_MANTENIMIENTO = 'en_mantenimiento',
   DE_BAJA = 'de_baja',
 }
@@ -21,26 +22,26 @@ export enum EstadoEquipo {
 @Entity('equipos')
 export class Equipo {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ name: 'compra_id' })
-  compraId: number;
+  compraId!: number;
 
   @ManyToOne(() => Compra, (compra) => compra.equipos)
   @JoinColumn({ name: 'compra_id' })
-  compra: Compra;
+  compra!: Compra;
 
   @Column({ length: 50 })
-  tipo: string;
+  tipo!: string;
 
   @Column({ length: 50, nullable: true })
-  marca: string;
+  marca!: string | null;
 
   @Column({ length: 80, nullable: true })
-  modelo: string;
+  modelo!: string | null;
 
   @Column({ name: 'numero_serie', length: 100, unique: true })
-  numeroSerie: string;
+  numeroSerie!: string;
 
   @Index()
   @Column({
@@ -49,15 +50,15 @@ export class Equipo {
     enumName: 'estado_equipo',
     default: EstadoEquipo.DISPONIBLE,
   })
-  estado: EstadoEquipo;
+  estado!: EstadoEquipo;
 
   @Column({ name: 'usuario_actual_id', nullable: true })
-  usuarioActualId: number;
+  usuarioActualId!: number | null;
 
   @ManyToOne(() => Usuario)
   @JoinColumn({ name: 'usuario_actual_id' })
-  usuarioActual: Usuario;
+  usuarioActual!: Usuario | null;
 
   @CreateDateColumn({ name: 'creado_en' })
-  creadoEn: Date;
+  creadoEn!: Date;
 }
