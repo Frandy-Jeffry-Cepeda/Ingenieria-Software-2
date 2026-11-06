@@ -32,6 +32,7 @@ export class EquiposService {
     @InjectRepository(Equipo) private equiposRepo: Repository<Equipo>,
     @InjectRepository(Movimiento) private movimientosRepo: Repository<Movimiento>,
     @InjectRepository(Usuario) private usuariosRepo: Repository<Usuario>,
+    @InjectRepository(Mantenimiento) private mantenimientosRepo: Repository<Mantenimiento>,
     private dataSource: DataSource,
     private mailtrapService: MailtrapService,
   ) {}
@@ -107,6 +108,15 @@ export class EquiposService {
       where: { equipoId: id },
       relations: { usuario: true, tecnico: true },
       order: { fecha: 'DESC', id: 'DESC' },
+    });
+  }
+
+  // Órdenes de mantenimiento de un equipo, de la más reciente a la más antigua (lista 1.3.2).
+  async ordenesMantenimiento(id: number) {
+    await this.detalle(id);
+    return this.mantenimientosRepo.find({
+      where: { equipoId: id },
+      order: { creadoEn: 'DESC', id: 'DESC' },
     });
   }
 
