@@ -14,6 +14,7 @@ export enum EstadoEquipo {
   DISPONIBLE = 'disponible',
   ENTREGADO = 'entregado',
   DE_BAJA = 'de_baja',
+  EN_MANTENIMIENTO = 'en_mantenimiento'
 }
 
 @Entity('equipos')
