@@ -21,25 +21,57 @@ Período 2026-20 · **Equipo #6**
 
 ## Qué hace el sistema
 
-Un equipo nace `disponible` al registrarse la compra que lo trajo. Pasa a `entregado` cuando se asigna a un empleado y vuelve a `disponible` al devolverse, tantas veces como haga falta. Sale del ciclo únicamente hacia `de_baja`, que es un estado terminal.
+Un equipo nace `disponible` al registrarse la compra que lo trajo. Pasa a `entregado` cuando se asigna a un empleado y vuelve a `disponible` al devolverse, tantas veces como haga falta. Desde el Entregable 3 también puede ir a `en_mantenimiento` y volver a `disponible` al finalizar el mantenimiento. Sale del ciclo únicamente hacia `de_baja`, que es un estado terminal.
 
-```
-        compra                entrega                 devolución
-  ( · ) ──────► disponible ◄──────────────────────────► entregado
-                    │            (RF-08 / RF-09)
-                    │ baja: desahucio u obsolescencia
-                    ▼
-                de_baja  ── terminal, el equipo no se borra
-```
+| Desde | Operación | Hacia |
+|---|---|---|
+| (compra) | registro de la compra | `disponible` |
+| `disponible` | entrega a un empleado (RF-08) | `entregado` |
+| `entregado` | devolución (RF-09) | `disponible` |
+| `disponible` | envío a mantenimiento (E3) | `en_mantenimiento` |
+| `en_mantenimiento` | fin del mantenimiento (E3) | `disponible` |
+| `disponible` | baja por desahucio u obsolescencia | `de_baja` (terminal, el equipo no se borra) |
 
 **Reglas duras**, validadas exclusivamente en el servidor:
 
+- Solo un equipo `disponible` puede entregarse, enviarse a mantenimiento o darse de baja. Devolver exige `entregado` y finalizar un mantenimiento exige `en_mantenimiento`.
 - La baja solo procede desde `disponible`. Un equipo entregado debe devolverse primero; la transición directa `entregado → de_baja` no existe.
 - `de_baja` es terminal. El equipo no se elimina: sigue consultable con todo su historial.
 - Cada transición inserta una fila en el historial y actualiza el equipo **en la misma transacción**.
 - El identificador del técnico se toma siempre del token de sesión, nunca del cuerpo de la petición.
 
 Solo los **técnicos de TI** inician sesión. Los **empleados** existen como registros a los que se asignan equipos y no tienen acceso al sistema.
+
+---
+
+## Módulo de mantenimientos (Entregable 3)
+
+Incremento funcional 1. Un técnico envía un equipo disponible a mantenimiento desde su ficha, indicando la descripción del problema, la fecha y el técnico responsable. El cambio de estado, la orden y el movimiento del historial se guardan en la misma transacción, con el equipo bloqueado (`pessimistic_write`) para que dos solicitudes simultáneas no lo envíen dos veces. Después de guardar, el servidor avisa por correo mediante Mailtrap.
+
+| Método y ruta | Qué hace |
+|---|---|
+| `POST /equipos/:id/mantenimiento` | Envía el equipo a mantenimiento. Cuerpo: `descripcion`, `fecha` (AAAA-MM-DD) y `tecnico`. Crea la orden, registra el movimiento `mantenimiento` y envía el aviso |
+| `POST /equipos/:id/mantenimiento/finalizar` | Cierra la orden pendiente, registra el movimiento `fin_mantenimiento` y devuelve el equipo a `disponible` |
+| `GET /equipos/:id/mantenimiento` | Lista las órdenes del equipo, de la más reciente a la más antigua. La usa la ficha del equipo |
+| `POST /mantenimientos` | Registra una orden en la tabla `ordenes_mantenimiento` (paquete 1.2.3); la usan las pruebas de integración |
+
+Todas las rutas exigen el token JWT.
+
+**Aviso por correo (Mailtrap).** El servicio está en `backend/src/integraciones/mailtrap` y usa el buzón de pruebas (Email Sandbox), así que ningún correo llega a una persona real. Se configura en `backend/.env` con `MAILTRAP_API_TOKEN`, `MAILTRAP_INBOX_ID`, `MAILTRAP_FROM_EMAIL`, `MAILTRAP_FROM_NAME` y `MAILTRAP_TO_EMAIL` (ver `backend/.env.example`). Si faltan el token o el buzón, el sistema registra el mantenimiento igual y solo omite el correo. Un fallo de Mailtrap tampoco deshace el cambio de estado.
+
+**Interfaz.** El botón «Enviar a mantenimiento» aparece en la ficha de un equipo disponible y abre `ModalMantenimiento`. La ficha muestra la lista de órdenes (`ListaOrdenes`) y la insignia del estado reconoce `en_mantenimiento`.
+
+### Pruebas
+
+Desde `backend/`:
+
+```bash
+npm test               # pruebas unitarias de las transiciones (Jest, sin base de datos)
+npm run test:cov       # lo mismo, con reporte de cobertura en backend/coverage
+npm run test:e2e       # pruebas de integración con Supertest (requieren la base de datos de desarrollo)
+```
+
+Las pruebas unitarias (`src/equipos/equipos.service.spec.ts`) cubren las cinco transiciones válidas y comprueban que las inválidas se rechazan sin guardar nada. Las de integración (`test/mantenimientos.e2e-spec.ts`) envían dos solicitudes simultáneas sobre el mismo equipo y esperan una respuesta 201 y otra 409; usan registros de la base de desarrollo, que hay que preparar antes de repetirlas.
 
 ---
 
@@ -139,14 +171,18 @@ backend/                  API NestJS
     auth/                 sesión: controlador, servicio, estrategia y guardia JWT
     usuarios/             entidad Usuario (empleados y técnicos), controlador, servicio
     compras/              entidad Compra; al crear una compra se crean sus equipos
-    equipos/              entidades Equipo y Movimiento; máquina de estados
+    equipos/              entidades Equipo, Movimiento y Mantenimiento; máquina de estados
+    mantenimientos/       órdenes de mantenimiento (POST /mantenimientos)
+    integraciones/mailtrap/  aviso por correo al enviar un equipo a mantenimiento
+  test/                   pruebas de integración (Jest + Supertest)
     health.controller.ts  verificación de salud del servicio
     seed.ts               siembra del técnico inicial y datos de demostración
 frontend/                 SPA React
   src/
     api/api.js            instancia axios única, con interceptor de token
     context/              AuthContext
-    components/           Layout · RutaPrivada · EstadoBadge · ModalEntrega · ModalBaja
+    components/           Layout · RutaPrivada · EstadoBadge · ModalEntrega · ModalBaja ·
+                          ModalMantenimiento · ListaOrdenes
     pages/                Login · Dashboard · ListaEquipos · DetalleEquipo ·
                           RegistrarCompra · ListaUsuarios · DetalleUsuario
 docker-compose.yml        stack completo de tres servicios
