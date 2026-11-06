@@ -43,6 +43,7 @@ export class EquiposService {
     equipoId: number,
     nuevoEstado: EstadoEquipo,
     mensajeError: string,
+    estadoOrigen?: EstadoEquipo,
   ) {
     const equipo = await manager.findOne(Equipo, {
       where: { id: equipoId },
@@ -51,6 +52,12 @@ export class EquiposService {
 
     if (!equipo) {
       throw new NotFoundException('Equipo no encontrado');
+    }
+
+    // Dos operaciones llevan a «disponible» (devolver y finalizar mantenimiento):
+    // cada una exige además su estado de origen para no confundirse entre sí.
+    if (estadoOrigen && equipo.estado !== estadoOrigen) {
+      throw new BadRequestException(mensajeError);
     }
 
     if (!this.transiciones[equipo.estado].includes(nuevoEstado)) {
@@ -176,6 +183,7 @@ export class EquiposService {
         id,
         EstadoEquipo.DISPONIBLE,
         'El equipo no está entregado, no hay nada que devolver',
+        EstadoEquipo.ENTREGADO,
       );
       const empleadoId = equipo.usuarioActualId;
       equipo.usuarioActualId = null;
@@ -262,6 +270,7 @@ export class EquiposService {
         id,
         EstadoEquipo.DISPONIBLE,
         'El equipo no se encuentra en mantenimiento',
+        EstadoEquipo.EN_MANTENIMIENTO,
       );
 
       const orden = await manager.findOne(Mantenimiento, {
