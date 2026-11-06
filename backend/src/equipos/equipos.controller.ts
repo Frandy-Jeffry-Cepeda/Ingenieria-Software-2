@@ -51,6 +51,11 @@ export class EquiposController {
     return this.equiposService.movimientos(id);
   }
 
+  @Get(':id/mantenimiento')
+  ordenesMantenimiento(@Param('id', ParseIntPipe) id: number) {
+    return this.equiposService.ordenesMantenimiento(id);
+  }
+
   @Patch(':id')
   actualizar(
     @Param('id', ParseIntPipe) id: number,

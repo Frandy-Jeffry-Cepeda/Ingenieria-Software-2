@@ -26,13 +26,13 @@ export class EquiposService {
     [EstadoEquipo.ENTREGADO]: [EstadoEquipo.DISPONIBLE],
     [EstadoEquipo.EN_MANTENIMIENTO]: [EstadoEquipo.DISPONIBLE],
     [EstadoEquipo.DE_BAJA]: [],
-    [EstadoEquipo.EN_MANTENIMIENTO]: [EstadoEquipo.DISPONIBLE], 
   };
 
   constructor(
     @InjectRepository(Equipo) private equiposRepo: Repository<Equipo>,
     @InjectRepository(Movimiento) private movimientosRepo: Repository<Movimiento>,
     @InjectRepository(Usuario) private usuariosRepo: Repository<Usuario>,
+    @InjectRepository(Mantenimiento) private mantenimientosRepo: Repository<Mantenimiento>,
     private dataSource: DataSource,
     private mailtrapService: MailtrapService,
   ) {}
@@ -43,6 +43,7 @@ export class EquiposService {
     equipoId: number,
     nuevoEstado: EstadoEquipo,
     mensajeError: string,
+    estadoOrigen?: EstadoEquipo,
   ) {
     const equipo = await manager.findOne(Equipo, {
       where: { id: equipoId },
@@ -51,6 +52,12 @@ export class EquiposService {
 
     if (!equipo) {
       throw new NotFoundException('Equipo no encontrado');
+    }
+
+    // Dos operaciones llevan a «disponible» (devolver y finalizar mantenimiento):
+    // cada una exige además su estado de origen para no confundirse entre sí.
+    if (estadoOrigen && equipo.estado !== estadoOrigen) {
+      throw new BadRequestException(mensajeError);
     }
 
     if (!this.transiciones[equipo.estado].includes(nuevoEstado)) {
@@ -111,6 +118,15 @@ export class EquiposService {
     });
   }
 
+  // Órdenes de mantenimiento de un equipo, de la más reciente a la más antigua (lista 1.3.2).
+  async ordenesMantenimiento(id: number) {
+    await this.detalle(id);
+    return this.mantenimientosRepo.find({
+      where: { equipoId: id },
+      order: { creadoEn: 'DESC', id: 'DESC' },
+    });
+  }
+
   async actualizar(id: number, dto: ActualizarEquipoDto) {
     const equipo = await this.detalle(id);
     Object.assign(equipo, dto);
@@ -167,6 +183,7 @@ export class EquiposService {
         id,
         EstadoEquipo.DISPONIBLE,
         'El equipo no está entregado, no hay nada que devolver',
+        EstadoEquipo.ENTREGADO,
       );
       const empleadoId = equipo.usuarioActualId;
       equipo.usuarioActualId = null;
@@ -253,6 +270,7 @@ export class EquiposService {
         id,
         EstadoEquipo.DISPONIBLE,
         'El equipo no se encuentra en mantenimiento',
+        EstadoEquipo.EN_MANTENIMIENTO,
       );
 
       const orden = await manager.findOne(Mantenimiento, {
