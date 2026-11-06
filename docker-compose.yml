@@ -42,6 +42,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:?definir JWT_SECRET}
       # Carga los datos de ejemplo la primera vez (admin@ti.com / admin123). Es idempotente.
       SEED_ON_START: ${SEED_ON_START:-true}
+      # Aviso por correo al enviar un equipo a mantenimiento (buzón de pruebas de Mailtrap).
+      # Si faltan el token o el buzón, el sistema funciona igual y solo omite el correo.
+      MAILTRAP_API_TOKEN: ${MAILTRAP_API_TOKEN:-}
+      MAILTRAP_INBOX_ID: ${MAILTRAP_INBOX_ID:-}
+      MAILTRAP_FROM_EMAIL: ${MAILTRAP_FROM_EMAIL:-inventario@ejemplo.com}
+      MAILTRAP_FROM_NAME: ${MAILTRAP_FROM_NAME:-Inventario TI}
+      MAILTRAP_TO_EMAIL: ${MAILTRAP_TO_EMAIL:-pruebas@ejemplo.com}
     expose:
       - '3000'
 
