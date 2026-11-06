@@ -6,6 +6,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
 import { ComprasModule } from './compras/compras.module';
 import { EquiposModule } from './equipos/equipos.module';
 import { HealthController } from './health.controller';
+import { MantenimientosModule } from './mantenimientos/mantenimientos.module';
 
 @Module({
   imports: [
@@ -30,7 +31,10 @@ import { HealthController } from './health.controller';
     UsuariosModule,
     ComprasModule,
     EquiposModule,
+    MantenimientosModule,
   ],
   controllers: [HealthController],
 })
+
+
 export class AppModule {}

@@ -1,0 +1,112 @@
+{
+  "app.module.ts": [
+    "auth/auth.module.ts",
+    "compras/compras.module.ts",
+    "equipos/equipos.module.ts",
+    "health.controller.ts",
+    "usuarios/usuarios.module.ts"
+  ],
+  "auth/auth.controller.ts": [
+    "auth/auth.service.ts",
+    "auth/login.dto.ts",
+    "auth/public.decorator.ts"
+  ],
+  "auth/auth.module.ts": [
+    "auth/auth.controller.ts",
+    "auth/auth.service.ts",
+    "auth/jwt-auth.guard.ts",
+    "auth/jwt.strategy.ts",
+    "usuarios/usuario.entity.ts"
+  ],
+  "auth/auth.service.ts": [
+    "usuarios/usuario.entity.ts"
+  ],
+  "auth/jwt-auth.guard.ts": [
+    "auth/public.decorator.ts"
+  ],
+  "auth/jwt.strategy.ts": [],
+  "auth/login.dto.ts": [],
+  "auth/public.decorator.ts": [],
+  "compras/compra.entity.ts": [
+    "equipos/equipo.entity.ts",
+    "usuarios/usuario.entity.ts"
+  ],
+  "compras/compras.controller.ts": [
+    "compras/compras.dto.ts",
+    "compras/compras.service.ts"
+  ],
+  "compras/compras.dto.ts": [],
+  "compras/compras.module.ts": [
+    "compras/compra.entity.ts",
+    "compras/compras.controller.ts",
+    "compras/compras.service.ts",
+    "equipos/equipo.entity.ts"
+  ],
+  "compras/compras.service.ts": [
+    "compras/compra.entity.ts",
+    "compras/compras.dto.ts",
+    "equipos/equipo.entity.ts"
+  ],
+  "equipos/equipo.entity.ts": [
+    "compras/compra.entity.ts",
+    "usuarios/usuario.entity.ts"
+  ],
+  "equipos/equipos.controller.ts": [
+    "equipos/equipo.entity.ts",
+    "equipos/equipos.dto.ts",
+    "equipos/equipos.service.ts"
+  ],
+  "equipos/equipos.dto.ts": [
+    "equipos/movimiento.entity.ts"
+  ],
+  "equipos/equipos.module.ts": [
+    "equipos/equipo.entity.ts",
+    "equipos/equipos.controller.ts",
+    "equipos/equipos.service.ts",
+    "equipos/movimiento.entity.ts",
+    "usuarios/usuario.entity.ts"
+  ],
+  "equipos/equipos.service.ts": [
+    "equipos/equipo.entity.ts",
+    "equipos/equipos.dto.ts",
+    "equipos/movimiento.entity.ts",
+    "usuarios/usuario.entity.ts"
+  ],
+  "equipos/movimiento.entity.ts": [
+    "equipos/equipo.entity.ts",
+    "usuarios/usuario.entity.ts"
+  ],
+  "health.controller.ts": [
+    "auth/public.decorator.ts"
+  ],
+  "main.ts": [
+    "app.module.ts"
+  ],
+  "seed.ts": [
+    "app.module.ts",
+    "compras/compra.entity.ts",
+    "equipos/equipo.entity.ts",
+    "equipos/movimiento.entity.ts",
+    "usuarios/usuario.entity.ts"
+  ],
+  "usuarios/usuario.entity.ts": [],
+  "usuarios/usuarios.controller.ts": [
+    "usuarios/usuario.entity.ts",
+    "usuarios/usuarios.dto.ts",
+    "usuarios/usuarios.service.ts"
+  ],
+  "usuarios/usuarios.dto.ts": [
+    "usuarios/usuario.entity.ts"
+  ],
+  "usuarios/usuarios.module.ts": [
+    "equipos/equipo.entity.ts",
+    "usuarios/usuario.entity.ts",
+    "usuarios/usuarios.controller.ts",
+    "usuarios/usuarios.service.ts"
+  ],
+  "usuarios/usuarios.service.ts": [
+    "equipos/equipo.entity.ts",
+    "usuarios/usuario.entity.ts",
+    "usuarios/usuarios.dto.ts"
+  ]
+}
