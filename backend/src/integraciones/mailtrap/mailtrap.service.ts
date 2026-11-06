@@ -64,7 +64,7 @@ export class MailtrapService {
 
       return { enviado: true };
     } catch (error) {
-      this.logger.error('No fue posible conectar con Mailtrap.');
+      this.logger.error(`No fue posible conectar con Mailtrap: ${String(error)}`);
       return { enviado: false, motivo: 'No fue posible conectar con Mailtrap' };
     }
   }

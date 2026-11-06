@@ -26,7 +26,6 @@ export class EquiposService {
     [EstadoEquipo.ENTREGADO]: [EstadoEquipo.DISPONIBLE],
     [EstadoEquipo.EN_MANTENIMIENTO]: [EstadoEquipo.DISPONIBLE],
     [EstadoEquipo.DE_BAJA]: [],
-    [EstadoEquipo.EN_MANTENIMIENTO]: [EstadoEquipo.DISPONIBLE], 
   };
 
   constructor(
