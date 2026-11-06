@@ -1,3 +1,4 @@
+
 import {
   Body,
   Controller,
@@ -9,9 +10,18 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
+
 import { EquiposService } from './equipos.service';
 import { EstadoEquipo } from './equipo.entity';
-import { ActualizarEquipoDto, BajaEquipoDto, DevolverEquipoDto, EntregarEquipoDto } from './equipos.dto';
+
+import {
+  ActualizarEquipoDto,
+  BajaEquipoDto,
+  CrearMantenimientoDto,
+  DevolverEquipoDto,
+  EntregarEquipoDto,
+} from './equipos.dto';
+
 import { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 @Controller('equipos')
@@ -19,7 +29,10 @@ export class EquiposController {
   constructor(private equiposService: EquiposService) {}
 
   @Get()
-  listar(@Query('estado') estado?: EstadoEquipo, @Query('q') q?: string) {
+  listar(
+    @Query('estado') estado?: EstadoEquipo,
+    @Query('q') q?: string,
+  ) {
     return this.equiposService.listar(estado, q);
   }
 
@@ -39,16 +52,18 @@ export class EquiposController {
   }
 
   @Patch(':id')
-  actualizar(@Param('id', ParseIntPipe) id: number, @Body() dto: ActualizarEquipoDto) {
+  actualizar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ActualizarEquipoDto,
+  ) {
     return this.equiposService.actualizar(id, dto);
   }
 
-  
   @Post(':id/entrega')
   entregar(
-  @Param('id', ParseIntPipe) id: number,
-  @Body() dto: EntregarEquipoDto,
-  @Req() req: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: EntregarEquipoDto,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.equiposService.entregar(id, dto, req.user.id);
   }
@@ -69,5 +84,29 @@ export class EquiposController {
     @Req() req: AuthenticatedRequest,
   ) {
     return this.equiposService.darDeBaja(id, dto, req.user.id);
-  } //Agregamos el parámetro req de tipo AuthenticatedRequest para acceder al id del usuario autenticado y pasarlo al servicio de equipos.
+  }
+
+  @Post(':id/mantenimiento')
+  enviarMantenimiento(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CrearMantenimientoDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.equiposService.enviarMantenimiento(
+      id,
+      dto,
+      req.user.id,
+    );
+  }
+
+  @Post(':id/mantenimiento/finalizar')
+  finalizarMantenimiento(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.equiposService.finalizarMantenimiento(
+      id,
+      req.user.id,
+    );
+  }
 }

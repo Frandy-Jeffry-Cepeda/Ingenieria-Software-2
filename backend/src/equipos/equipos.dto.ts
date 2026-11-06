@@ -1,4 +1,14 @@
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+
+import {
+  IsDateString,
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
+
 import { MotivoSalida } from './movimiento.entity';
 
 export class ActualizarEquipoDto {
@@ -23,7 +33,7 @@ export class ActualizarEquipoDto {
 
 export class EntregarEquipoDto {
   @IsInt()
-  usuarioId: number;
+  usuarioId!: number;
 
   @IsOptional()
   @IsString()
@@ -38,9 +48,24 @@ export class DevolverEquipoDto {
 
 export class BajaEquipoDto {
   @IsEnum(MotivoSalida)
-  motivo: MotivoSalida;
+  motivo!: MotivoSalida;
 
   @IsOptional()
   @IsString()
   observacion?: string;
+}
+
+export class CrearMantenimientoDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  descripcion!: string;
+
+  @IsDateString()
+  fecha!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  tecnico!: string;
 }

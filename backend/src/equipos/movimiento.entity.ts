@@ -1,3 +1,4 @@
+
 import {
   Column,
   CreateDateColumn,
@@ -7,6 +8,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+
 import { Equipo } from './equipo.entity';
 import { Usuario } from '../usuarios/usuario.entity';
 
@@ -14,6 +16,8 @@ export enum TipoMovimiento {
   ENTREGA = 'entrega',
   DEVOLUCION = 'devolucion',
   SALIDA = 'salida',
+  MANTENIMIENTO = 'mantenimiento',
+  FIN_MANTENIMIENTO = 'fin_mantenimiento',
 }
 
 export enum MotivoSalida {
@@ -24,32 +28,36 @@ export enum MotivoSalida {
 @Entity('movimientos')
 export class Movimiento {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Index()
   @Column({ name: 'equipo_id' })
-  equipoId: number;
+  equipoId!: number;
 
   @ManyToOne(() => Equipo)
   @JoinColumn({ name: 'equipo_id' })
-  equipo: Equipo;
+  equipo!: Equipo;
 
-  @Column({ type: 'enum', enum: TipoMovimiento, enumName: 'tipo_movimiento' })
-  tipo: TipoMovimiento;
+  @Column({
+    type: 'enum',
+    enum: TipoMovimiento,
+    enumName: 'tipo_movimiento',
+  })
+  tipo!: TipoMovimiento;
 
   @Column({ name: 'usuario_id', nullable: true })
-  usuarioId: number;
+  usuarioId!: number | null;
 
-  @ManyToOne(() => Usuario)
+  @ManyToOne(() => Usuario, { nullable: true })
   @JoinColumn({ name: 'usuario_id' })
-  usuario: Usuario;
+  usuario!: Usuario | null;
 
   @Column({ name: 'tecnico_id' })
-  tecnicoId: number;
+  tecnicoId!: number;
 
   @ManyToOne(() => Usuario)
   @JoinColumn({ name: 'tecnico_id' })
-  tecnico: Usuario;
+  tecnico!: Usuario;
 
   @Column({
     name: 'motivo_salida',
@@ -58,11 +66,11 @@ export class Movimiento {
     enumName: 'motivo_salida',
     nullable: true,
   })
-  motivoSalida: MotivoSalida;
+  motivoSalida!: MotivoSalida | null;
 
   @Column({ type: 'text', nullable: true })
-  observacion: string;
+  observacion!: string | null;
 
   @CreateDateColumn({ name: 'fecha' })
-  fecha: Date;
+  fecha!: Date;
 }
