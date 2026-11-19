@@ -13,6 +13,7 @@ import {
   EntregarEquipoDto,
 } from './equipos.dto';
 import { MailtrapService } from '../integraciones/mailtrap/mailtrap.service';
+import { OrdenMantenimiento } from '../mantenimientos/orden-mantenimiento.entity';
 
 @Injectable()
 export class EquiposService {
@@ -89,13 +90,15 @@ export class EquiposService {
     const disponibles = await this.equiposRepo.countBy({ estado: EstadoEquipo.DISPONIBLE });
     const entregados = await this.equiposRepo.countBy({ estado: EstadoEquipo.ENTREGADO });
     const deBaja = await this.equiposRepo.countBy({ estado: EstadoEquipo.DE_BAJA });
+    // Sin este conteo, los equipos en mantenimiento no aparecían en el panel (defecto D-10 del E4).
+    const enMantenimiento = await this.equiposRepo.countBy({ estado: EstadoEquipo.EN_MANTENIMIENTO });
     const ultimasEntregas = await this.movimientosRepo.find({
       where: { tipo: TipoMovimiento.ENTREGA },
       relations: { equipo: true, usuario: true, tecnico: true },
       order: { fecha: 'DESC', id: 'DESC' },
       take: 5,
     });
-    return { disponibles, entregados, deBaja, ultimasEntregas };
+    return { disponibles, entregados, enMantenimiento, deBaja, ultimasEntregas };
   }
 
   async detalle(id: number) {
@@ -278,17 +281,34 @@ export class EquiposService {
         lock: { mode: 'pessimistic_write' },
       });
 
-      if (!orden) {
+      // Las órdenes creadas con POST /mantenimientos viven en otra tabla; sin esto
+      // el equipo quedaba en mantenimiento para siempre (defecto D-09 del E4).
+      const ordenPorApi = orden
+        ? null
+        : await manager.findOne(OrdenMantenimiento, {
+            where: { equipo: { id }, estado_orden: 'PENDIENTE' },
+            lock: { mode: 'pessimistic_write' },
+          });
+
+      if (!orden && !ordenPorApi) {
         throw new BadRequestException('No existe una orden de mantenimiento pendiente');
       }
 
-      orden.fechaFinalizacion = new Date();
-      await manager.save(Mantenimiento, orden);
+      let descripcion: string;
+      if (orden) {
+        orden.fechaFinalizacion = new Date();
+        await manager.save(Mantenimiento, orden);
+        descripcion = orden.descripcion;
+      } else {
+        ordenPorApi!.estado_orden = 'COMPLETADO';
+        await manager.save(OrdenMantenimiento, ordenPorApi!);
+        descripcion = ordenPorApi!.descripcion_falla;
+      }
       await manager.save(Movimiento, {
         equipoId: equipo.id,
         tipo: TipoMovimiento.FIN_MANTENIMIENTO,
         tecnicoId,
-        observacion: `Mantenimiento finalizado: ${orden.descripcion}`,
+        observacion: `Mantenimiento finalizado: ${descripcion}`,
       });
       await manager.save(Equipo, equipo);
     });
