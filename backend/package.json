@@ -9,7 +9,8 @@
     "seed": "ts-node src/seed.ts",
     "test": "jest",
     "test:cov": "jest --coverage",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e:cov": "jest --config ./test/jest-e2e.json --runInBand --coverage"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",
