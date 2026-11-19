@@ -6,13 +6,14 @@ import { Mantenimiento } from './mantenimiento.entity';
 import { Movimiento, TipoMovimiento } from './movimiento.entity';
 import { Usuario, RolUsuario } from '../usuarios/usuario.entity';
 import { MailtrapService } from '../integraciones/mailtrap/mailtrap.service';
+import { OrdenMantenimiento } from '../mantenimientos/orden-mantenimiento.entity';
 
 // Pruebas unitarias del paquete 1.4.1: reglas de transición de estado de un equipo.
 // La base de datos se simula: el EntityManager devuelve el equipo con el estado de cada caso.
 
 type Guardado = { entidad: unknown; datos: Record<string, unknown> };
 
-function crearServicio(estadoInicial: EstadoEquipo | null, opciones: { ordenPendiente?: boolean } = {}) {
+function crearServicio(estadoInicial: EstadoEquipo | null, opciones: { ordenPendiente?: boolean; ordenApi?: boolean } = {}) {
   const equipo = estadoInicial
     ? ({ id: 1, numeroSerie: 'SN-001', estado: estadoInicial, usuarioActualId: 7 } as Equipo)
     : null;
@@ -21,6 +22,9 @@ function crearServicio(estadoInicial: EstadoEquipo | null, opciones: { ordenPend
   const manager = {
     findOne: jest.fn(async (entidad: unknown) => {
       if (entidad === Equipo) return equipo;
+      if (entidad === OrdenMantenimiento) {
+        return opciones.ordenApi ? { id: 8, descripcion_falla: 'No enciende', estado_orden: 'PENDIENTE' } : null;
+      }
       if (entidad === Mantenimiento) {
         return opciones.ordenPendiente
           ? { id: 3, equipoId: 1, descripcion: 'Cambio de disco', fechaFinalizacion: null }
@@ -38,8 +42,12 @@ function crearServicio(estadoInicial: EstadoEquipo | null, opciones: { ordenPend
     transaction: jest.fn(async (trabajo: (m: EntityManager) => Promise<unknown>) => trabajo(manager)),
   } as unknown as DataSource;
 
+  const qb = { leftJoinAndSelect: jest.fn().mockReturnThis(), orderBy: jest.fn().mockReturnThis(), andWhere: jest.fn().mockReturnThis(), getMany: jest.fn(async () => [equipo]) };
   const equiposRepo = {
     findOne: jest.fn(async () => equipo),
+    countBy: jest.fn(async ({ estado }: { estado: EstadoEquipo }) => ({ disponible: 3, entregado: 2, en_mantenimiento: 1, de_baja: 4 })[estado]),
+    createQueryBuilder: jest.fn(() => qb),
+    save: jest.fn(async (e: unknown) => e),
   } as unknown as Repository<Equipo>;
   const usuariosRepo = {
     findOneBy: jest.fn(async () => ({ id: 7, activo: true, rol: RolUsuario.EMPLEADO })),
@@ -53,13 +61,13 @@ function crearServicio(estadoInicial: EstadoEquipo | null, opciones: { ordenPend
 
   const servicio = new EquiposService(
     equiposRepo,
-    {} as Repository<Movimiento>,
+    { find: jest.fn(async () => []) } as unknown as Repository<Movimiento>,
     usuariosRepo,
     mantenimientosRepo,
     dataSource,
     mailtrap,
   );
-  return { servicio, equipo, guardados, mailtrap, mantenimientosRepo };
+  return { servicio, equipo, guardados, mailtrap, mantenimientosRepo, equiposRepo, qb };
 }
 
 const tiposGuardados = (g: Guardado[]) =>
@@ -134,6 +142,14 @@ describe('EquiposService · transiciones que se rechazan', () => {
     expect(mailtrap.enviarAvisoMantenimiento).not.toHaveBeenCalled();
   });
 
+  it('finaliza también una orden creada con POST /mantenimientos (defecto D-09)', async () => {
+    const { servicio, equipo, guardados } = crearServicio(EstadoEquipo.EN_MANTENIMIENTO, { ordenApi: true });
+    await servicio.finalizarMantenimiento(1, 99);
+    expect(equipo!.estado).toBe(EstadoEquipo.DISPONIBLE);
+    expect(guardados.find((g) => g.entidad === OrdenMantenimiento)!.datos.estado_orden).toBe('COMPLETADO');
+    expect(tiposGuardados(guardados)).toEqual([TipoMovimiento.FIN_MANTENIMIENTO]);
+  });
+
   it('rechaza finalizar si no hay una orden pendiente', async () => {
     const { servicio } = crearServicio(EstadoEquipo.EN_MANTENIMIENTO, { ordenPendiente: false });
     await expect(servicio.finalizarMantenimiento(1, 99)).rejects.toBeInstanceOf(BadRequestException);
@@ -154,5 +170,32 @@ describe('EquiposService · lista de órdenes (GET /equipos/:id/mantenimiento)',
       where: { equipoId: 1 },
       order: { creadoEn: 'DESC', id: 'DESC' },
     });
+  });
+});
+
+describe('EquiposService · consultas', () => {
+  it('el resumen cuenta los cuatro estados, incluido en_mantenimiento (defecto D-10)', async () => {
+    const { servicio } = crearServicio(EstadoEquipo.DISPONIBLE);
+    await expect(servicio.resumen()).resolves.toMatchObject({ disponibles: 3, entregados: 2, enMantenimiento: 1, deBaja: 4 });
+  });
+
+  it('el listado filtra por estado y busca por serie, tipo, marca o modelo', async () => {
+    const { servicio, qb } = crearServicio(EstadoEquipo.DISPONIBLE);
+    await servicio.listar(EstadoEquipo.EN_MANTENIMIENTO, 'dell');
+    expect(qb.andWhere).toHaveBeenCalledWith('equipo.estado = :estado', { estado: EstadoEquipo.EN_MANTENIMIENTO });
+    expect(qb.andWhere).toHaveBeenCalledWith(expect.stringContaining('ILIKE'), { q: '%dell%' });
+  });
+
+  it('actualizar traduce un número de serie repetido en un error 400', async () => {
+    const { servicio, equiposRepo } = crearServicio(EstadoEquipo.DISPONIBLE);
+    const err = Object.assign(new Error('dup'), { driverError: { code: '23505' } });
+    (equiposRepo.save as jest.Mock).mockRejectedValueOnce(err);
+    await expect(servicio.actualizar(1, { numeroSerie: 'X' })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('actualizar guarda los cambios y devuelve el equipo', async () => {
+    const { servicio, equiposRepo } = crearServicio(EstadoEquipo.DISPONIBLE);
+    await expect(servicio.actualizar(1, { marca: 'HP' })).resolves.toMatchObject({ marca: 'HP' });
+    expect(equiposRepo.save).toHaveBeenCalled();
   });
 });
