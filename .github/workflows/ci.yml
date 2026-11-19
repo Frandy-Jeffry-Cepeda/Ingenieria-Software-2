@@ -1,0 +1,106 @@
+# =====================================================================
+#  Integración continua · Sistema de Inventario de Equipos de TI
+#  INF-5250 · Equipo 6 · Entregable 4 (paquete 2.8)
+#
+#  En cada Pull Request hacia main y en cada push a main:
+#    servidor:  ESLint, compilación, pruebas unitarias con cobertura y
+#               pruebas de integración contra un PostgreSQL de servicio.
+#    interfaz:  compilación con Vite.
+#  Los reportes de cobertura quedan como artefactos de la ejecución.
+# =====================================================================
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  servidor:
+    name: Servidor (lint, build y pruebas)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: inventario_ti
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASS: postgres
+      DB_NAME: inventario_ti
+      JWT_SECRET: clave-solo-para-ci
+      # Técnico que crea el seed del proyecto; solo existe en la base temporal de CI.
+      TEST_USER_EMAIL: admin@ti.com
+      TEST_USER_PASSWORD: admin123
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Análisis estático (ESLint)
+        run: npx eslint src test
+
+      - name: Compilar
+        run: npm run build
+
+      - name: Pruebas unitarias con cobertura
+        run: npm run test:cov
+
+      - name: Cargar datos de prueba (seed)
+        run: npm run seed
+
+      - name: Pruebas de integración con cobertura
+        run: npm run test:e2e:cov
+
+      - name: Guardar reportes de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura
+          path: |
+            backend/coverage
+            backend/coverage-e2e
+          if-no-files-found: ignore
+
+  interfaz:
+    name: Interfaz (build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar
+        run: npm run build
