@@ -66,12 +66,21 @@ Todas las rutas exigen el token JWT.
 Desde `backend/`:
 
 ```bash
-npm test               # pruebas unitarias de las transiciones (Jest, sin base de datos)
+npm test               # pruebas unitarias (Jest, sin base de datos)
 npm run test:cov       # lo mismo, con reporte de cobertura en backend/coverage
-npm run test:e2e       # pruebas de integración con Supertest (requieren la base de datos de desarrollo)
+npm run test:e2e       # pruebas de integración con Supertest (requieren la base y el seed)
+npm run test:e2e:cov   # lo mismo, con reporte de cobertura en backend/coverage-e2e
 ```
 
-Las pruebas unitarias (`src/equipos/equipos.service.spec.ts`) cubren las cinco transiciones válidas y comprueban que las inválidas se rechazan sin guardar nada. Las de integración (`test/mantenimientos.e2e-spec.ts`) envían dos solicitudes simultáneas sobre el mismo equipo y esperan una respuesta 201 y otra 409; usan registros de la base de desarrollo, que hay que preparar antes de repetirlas.
+Las pruebas de integración necesitan una base PostgreSQL con el seed cargado (`npm run seed`) y las variables `TEST_USER_EMAIL` y `TEST_USER_PASSWORD` del técnico de prueba.
+
+| Suite | Archivos | Qué cubre |
+|---|---|---|
+| Unitarias | `src/**/*.spec.ts` | Inicio de sesión, guardia y estrategia JWT, usuarios, compras, transiciones de estado, consultas de equipos, órdenes de mantenimiento, Mailtrap (con la red simulada) y `/health` |
+| Integración | `test/api.e2e-spec.ts` | La API completa sobre una base real: autenticación, usuarios, compras, ciclo de vida de un equipo, mantenimiento y diez entregas simultáneas del mismo equipo. Crea sus propios datos, así que se puede repetir |
+| Integración | `test/mantenimientos.e2e-spec.ts` | `POST /mantenimientos` y la doble solicitud. Usa los equipos 3 y 6 del seed: corre sobre una base recién sembrada |
+
+**Integración continua.** `.github/workflows/ci.yml` corre en cada Pull Request hacia `main`: ESLint, compilación, pruebas unitarias e integración del servidor (con un PostgreSQL de servicio) y compilación de la interfaz. Los reportes de cobertura quedan como artefacto de cada ejecución. La tabla de defectos está en `docs/pruebas/defectos-E4.md`.
 
 ---
 
