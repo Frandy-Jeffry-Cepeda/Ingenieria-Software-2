@@ -4,6 +4,7 @@ import { DataSource,Repository } from 'typeorm';
 import { OrdenMantenimiento } from './orden-mantenimiento.entity';
 import { Equipo, EstadoEquipo } from '../equipos/equipo.entity';
 import { CrearOrdenMantenimientoDto } from './mantenimientos.dto';
+import { Movimiento, TipoMovimiento } from '../equipos/movimiento.entity';
 
 @Injectable()
 export class MantenimientosService {
@@ -15,7 +16,7 @@ export class MantenimientosService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async crearOrden(dto: CrearOrdenMantenimientoDto): Promise<OrdenMantenimiento> {
+  async crearOrden(dto: CrearOrdenMantenimientoDto, tecnicoId: number): Promise<OrdenMantenimiento> {
 return this.dataSource.transaction(async (manager) => {
 
     // 1. Buscar los equipo
@@ -47,6 +48,14 @@ const ordenGuardada = await manager.save(OrdenMantenimiento, nuevaOrden);
     // 3. Se actualiza el estado del equipo
     equipo.estado = EstadoEquipo.EN_MANTENIMIENTO
     await manager.save(Equipo, equipo);
+
+    // 4. Como toda transición, queda en el historial con el técnico del token (defecto D-08 del E4).
+    await manager.save(Movimiento, {
+      equipoId: equipo.id,
+      tipo: TipoMovimiento.MANTENIMIENTO,
+      tecnicoId,
+      observacion: dto.descripcionFalla,
+    });
     return ordenGuardada;
   });
   }
