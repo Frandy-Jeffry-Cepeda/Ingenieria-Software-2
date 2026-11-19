@@ -17,6 +17,7 @@ function Dashboard() {
   const tarjetas = [
     { titulo: 'Disponibles', valor: resumen?.disponibles ?? 0, color: 'success', filtro: 'disponible' },
     { titulo: 'Entregados', valor: resumen?.entregados ?? 0, color: 'primary', filtro: 'entregado' },
+    { titulo: 'En mantenimiento', valor: resumen?.enMantenimiento ?? 0, color: 'warning', filtro: 'en_mantenimiento' },
     { titulo: 'De baja', valor: resumen?.deBaja ?? 0, color: 'secondary', filtro: 'de_baja' },
   ];
 
@@ -26,7 +27,7 @@ function Dashboard() {
       {error && <Alert variant="danger">{error}</Alert>}
       <Row className="mb-4">
         {tarjetas.map((t) => (
-          <Col md={4} key={t.titulo}>
+          <Col md={3} key={t.titulo}>
             <Card
               bg={t.color}
               text="white"

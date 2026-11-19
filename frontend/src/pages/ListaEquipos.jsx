@@ -46,6 +46,7 @@ function ListaEquipos() {
               <option value="">Todos los estados</option>
               <option value="disponible">Disponible</option>
               <option value="entregado">Entregado</option>
+              <option value="en_mantenimiento">En mantenimiento</option>
               <option value="de_baja">De baja</option>
             </Form.Select>
           </Col>
