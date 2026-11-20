@@ -14,27 +14,43 @@ describe('MantenimientosController (e2e)', () => {
   beforeAll(async () => {
     // Seguridad: las pruebas modifican datos.
     // Solo se permite utilizar la base de pruebas.
+
 const dbHost = (process.env.DB_HOST ?? '').trim().toLowerCase();
 const dbPort = (process.env.DB_PORT ?? '').trim();
 const dbName = (process.env.DB_NAME ?? '').trim();
+const dbSsl = (process.env.DB_SSL ?? 'false').trim().toLowerCase();
 
 const databaseUrlConfigurada = Boolean(
   process.env.DATABASE_URL?.trim(),
 );
 
+// Entorno local exclusivo para pruebas E2E
+const entornoLocal =
+  ['localhost', '127.0.0.1'].includes(dbHost) &&
+  dbPort === '55432' &&
+  dbName === 'inventario_ti_test' &&
+  dbSsl === 'false';
+
+// PostgreSQL temporal de GitHub Actions
+const entornoCI =
+  process.env.GITHUB_ACTIONS === 'true' &&
+  dbHost === 'localhost' &&
+  dbPort === '5432' &&
+  dbName === 'inventario_ti' &&
+  dbSsl === 'false';
+
 if (
   databaseUrlConfigurada ||
-  !['localhost', '127.0.0.1'].includes(dbHost) ||
-  dbPort !== '55432' ||
-  dbName !== 'inventario_ti_test' ||
-  process.env.DB_SSL !== 'false'
+  (!entornoLocal && !entornoCI)
 ) {
   throw new Error(
-    'D-18: las pruebas solo pueden ejecutarse contra ' +
-      'PostgreSQL local (127.0.0.1:55432), con la base ' +
-      'inventario_ti_test, SSL desactivado y sin DATABASE_URL.',
+    'D-18: las pruebas E2E requieren una base aislada. ' +
+      'Se permite inventario_ti_test local o ' +
+      'PostgreSQL temporal de GitHub Actions. ' +
+      'No se permite la conexión a Neon.',
   );
 }
+
 
 
     const testEmail = process.env.TEST_USER_EMAIL;
