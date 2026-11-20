@@ -1,7 +1,10 @@
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Repository } from 'typeorm';
+import { Usuario } from '../usuarios/usuario.entity';
 
 interface JwtPayload {
   sub: number;
@@ -10,19 +13,31 @@ interface JwtPayload {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+  constructor(@InjectRepository(Usuario) private readonly usuariosRepo: Repository<Usuario>) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: process.env.JWT_SECRET || 'secreto-universitario',
     });
   }
 
-// Eliminamos el uso de any en validate y definimos que el token debe contener sub y nombre. (A.J.A.D)
+  /**
+   * Revalida la cuenta en cada petición para revocar inmediatamente sesiones
+   * de usuarios desactivados o eliminados, aunque el JWT no haya expirado.
+   */
+  async validate(payload: JwtPayload) {
+    const usuario = await this.usuariosRepo.findOne({
+      where: { id: payload.sub },
+      select: { id: true, nombre: true, rol: true, activo: true },
+    });
 
-  validate(payload: JwtPayload) {
+    if (!usuario || !usuario.activo) {
+      throw new UnauthorizedException('La cuenta está inactiva o ya no existe');
+    }
+
     return {
-      id: payload.sub,
-      nombre: payload.nombre,
+      id: usuario.id,
+      nombre: usuario.nombre,
+      rol: usuario.rol,
     };
   }
 }
