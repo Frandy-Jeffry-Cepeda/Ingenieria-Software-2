@@ -22,8 +22,11 @@ import {
   EntregarEquipoDto,
 } from './equipos.dto';
 
+import { Roles } from '../auth/roles.decorator';
+import { RolUsuario } from '../usuarios/usuario.entity';
 import { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
+@Roles(RolUsuario.ADMINISTRADOR, RolUsuario.TECNICO)
 @Controller('equipos')
 export class EquiposController {
   constructor(private equiposService: EquiposService) {}

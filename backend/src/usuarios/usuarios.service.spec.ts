@@ -50,6 +50,11 @@ describe('UsuariosService', () => {
       .rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('exige contraseña para crear un administrador', async () => {
+    await expect(crear().servicio.crear({ nombre: 'A', email: 'a@e.com', rol: RolUsuario.ADMINISTRADOR }))
+      .rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('guarda la contraseña de un técnico cifrada con bcrypt, nunca en claro', async () => {
     const { servicio, guardados } = crear();
     await servicio.crear({ nombre: 'T', email: 't@e.com', rol: RolUsuario.TECNICO, password: 'segura-123' });
