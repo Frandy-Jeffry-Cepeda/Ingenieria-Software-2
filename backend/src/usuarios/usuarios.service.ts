@@ -45,8 +45,10 @@ export class UsuariosService {
 
   async crear(dto: CrearUsuarioDto) {
     const rol = dto.rol || RolUsuario.EMPLEADO;
-    if (rol === RolUsuario.TECNICO && !dto.password) {
-      throw new BadRequestException('Un técnico necesita contraseña');
+    const requierePassword = rol === RolUsuario.ADMINISTRADOR || rol === RolUsuario.TECNICO;
+    const password = dto.password;
+    if (requierePassword && !password) {
+      throw new BadRequestException('Un administrador o técnico necesita contraseña');
     }
     const usuario = this.usuariosRepo.create({
       nombre: dto.nombre,
@@ -54,8 +56,8 @@ export class UsuariosService {
       departamento: dto.departamento,
       rol,
     });
-    if (rol === RolUsuario.TECNICO) {
-      usuario.passwordHash = bcrypt.hashSync(dto.password, 10);
+    if (requierePassword && password) {
+      usuario.passwordHash = bcrypt.hashSync(password, 10);
     }
     const guardado = await this.guardar(usuario);
     return this.usuariosRepo.findOneBy({ id: guardado.id });

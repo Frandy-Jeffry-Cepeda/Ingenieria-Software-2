@@ -14,13 +14,19 @@ export class AuthService {
 
   async login(email: string, password: string) {
     const usuario = await this.usuariosRepo.findOne({
-      where: { email, rol: RolUsuario.TECNICO },
-      select: { id: true, nombre: true, activo: true, passwordHash: true },
+      where: { email },
+      select: { id: true, nombre: true, activo: true, passwordHash: true, rol: true },
     });
-    if (!usuario || !usuario.activo || !bcrypt.compareSync(password, usuario.passwordHash)) {
+    if (
+      !usuario ||
+      !usuario.activo ||
+      ![RolUsuario.ADMINISTRADOR, RolUsuario.TECNICO].includes(usuario.rol) ||
+      !usuario.passwordHash ||
+      !bcrypt.compareSync(password, usuario.passwordHash)
+    ) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
-    const token = this.jwtService.sign({ sub: usuario.id, nombre: usuario.nombre });
-    return { token, nombre: usuario.nombre };
+    const token = this.jwtService.sign({ sub: usuario.id, nombre: usuario.nombre, rol: usuario.rol });
+    return { token, nombre: usuario.nombre, rol: usuario.rol };
   }
 }

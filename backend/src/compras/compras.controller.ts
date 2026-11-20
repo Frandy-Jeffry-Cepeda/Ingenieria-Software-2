@@ -1,8 +1,11 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Req } from '@nestjs/common';
 import { ComprasService } from './compras.service';
 import { CrearCompraDto } from './compras.dto';
+import { Roles } from '../auth/roles.decorator';
+import { RolUsuario } from '../usuarios/usuario.entity';
 import { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface'; //Agregamos el import de la interfaz AuthenticatedRequest para tipar correctamente el objeto req.
 
+@Roles(RolUsuario.ADMINISTRADOR, RolUsuario.TECNICO)
 @Controller('compras')
 export class ComprasController {
   constructor(private comprasService: ComprasService) {}

@@ -15,20 +15,28 @@ async function seed() {
   const equipos = dataSource.getRepository(Equipo);
   const movimientos = dataSource.getRepository(Movimiento);
 
-  const tecnicos = await usuarios.countBy({ rol: RolUsuario.TECNICO });
-  if (tecnicos > 0) {
-    console.log('Ya existen técnicos, el seed no hace nada.');
+  const administradores = await usuarios.countBy({ rol: RolUsuario.ADMINISTRADOR });
+  if (administradores > 0) {
+    console.log('Ya existe un administrador, el seed no hace nada.');
     await app.close();
     return;
   }
 
-  const admin = await usuarios.save({
-    nombre: 'Admin TI',
-    email: 'admin@ti.com',
-    departamento: 'TI',
-    rol: RolUsuario.TECNICO,
-    passwordHash: bcrypt.hashSync('admin123', 10),
-  });
+  let admin = await usuarios.findOneBy({ email: 'admin@ti.com' });
+  if (admin) {
+    admin.rol = RolUsuario.ADMINISTRADOR;
+    admin.passwordHash = admin.passwordHash || bcrypt.hashSync('admin123', 10);
+    admin.activo = true;
+    admin = await usuarios.save(admin);
+  } else {
+    admin = await usuarios.save({
+      nombre: 'Admin TI',
+      email: 'admin@ti.com',
+      departamento: 'TI',
+      rol: RolUsuario.ADMINISTRADOR,
+      passwordHash: bcrypt.hashSync('admin123', 10),
+    });
+  }
 
   const [ana, luis, maria] = await usuarios.save([
     { nombre: 'Ana Pérez', email: 'ana.perez@empresa.com', departamento: 'Contabilidad' },
