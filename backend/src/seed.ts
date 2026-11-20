@@ -15,20 +15,40 @@ async function seed() {
   const equipos = dataSource.getRepository(Equipo);
   const movimientos = dataSource.getRepository(Movimiento);
 
-  const tecnicos = await usuarios.countBy({ rol: RolUsuario.TECNICO });
-  if (tecnicos > 0) {
-    console.log('Ya existen técnicos, el seed no hace nada.');
-    await app.close();
-    return;
-  }
+ const tecnicos = await usuarios.countBy({
+  rol: RolUsuario.TECNICO,
+});
 
-  const admin = await usuarios.save({
-    nombre: 'Admin TI',
-    email: 'admin@ti.com',
-    departamento: 'TI',
-    rol: RolUsuario.TECNICO,
-    passwordHash: bcrypt.hashSync('admin123', 10),
-  });
+// Si ya existen técnicos, no ejecutar el seed
+if (tecnicos > 0) {
+  await app.close();
+  return;
+}
+
+// Validar la contraseña de inicialización
+const seedPassword = process.env.SEED_ADMIN_PASSWORD;
+
+if (
+  !seedPassword ||
+  seedPassword.length < 12 ||
+  Buffer.byteLength(seedPassword, 'utf8') > 72
+) {
+  await app.close();
+
+  throw new Error(
+    'Para inicializar usuarios, configura SEED_ADMIN_PASSWORD ' +
+    'con al menos 12 caracteres y un máximo de 72 bytes.',
+  );
+}
+
+// Crear el usuario inicial con una contraseña segura
+const admin = await usuarios.save({
+  nombre: 'Admin TI',
+  email: 'admin@ti.com',
+  departamento: 'TI',
+  rol: RolUsuario.TECNICO,
+  passwordHash: bcrypt.hashSync(seedPassword, 12),
+});
 
   const [ana, luis, maria] = await usuarios.save([
     { nombre: 'Ana Pérez', email: 'ana.perez@empresa.com', departamento: 'Contabilidad' },
@@ -105,7 +125,7 @@ async function seed() {
   });
   await equipos.update(mon2.id, { estado: EstadoEquipo.DE_BAJA });
 
-  console.log('Seed completado. Técnico: admin@ti.com / admin123');
+  console.log('Datos iniciales creados correctamente.');
   await app.close();
 }
 

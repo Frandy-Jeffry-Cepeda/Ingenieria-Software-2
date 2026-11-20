@@ -171,6 +171,27 @@ describe('AuthService - changePassword', () => {
     ).toBe(false);
   });
 
+  // PRUEBA ADICIONAL - MINIMO DE 6 CARACTERES
+  it('acepta una clave de exactamente 6 caracteres', async () => {
+    const { servicio, repoMock } = crear();
+    const claveSeis = 'Ab1!xy';
+
+    await servicio.changePassword(
+      5,
+      passwordActual,
+      claveSeis,
+    );
+
+    expect(repoMock.update).toHaveBeenCalledTimes(1);
+
+    const nuevoHash = (repoMock.update as jest.Mock)
+      .mock.calls[0][1].passwordHash as string;
+
+    expect(
+      await bcrypt.compare(claveSeis, nuevoHash),
+    ).toBe(true);
+  });
+
   // PRUEBA 2
   it('rechaza una contraseña actual incorrecta', async () => {
     const { servicio, repoMock } = crear();
@@ -221,14 +242,14 @@ describe('AuthService - changePassword', () => {
   });
 
   // PRUEBA 5
-  it('rechaza contraseñas nuevas menores de 12 caracteres', async () => {
+  it('rechaza contraseñas nuevas menores de 6 caracteres', async () => {
     const { servicio, repoMock } = crear();
 
     await expect(
       servicio.changePassword(
         5,
         passwordActual,
-        'Corta123!',
+        'Ab1!x',
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
 

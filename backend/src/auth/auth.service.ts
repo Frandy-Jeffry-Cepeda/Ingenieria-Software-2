@@ -76,7 +76,7 @@ export class AuthService {
     // 2. Validar la nueva contraseña.
     if (
       typeof newPassword !== 'string' ||
-      newPassword.length < 12 ||
+      newPassword.length < 6 ||
       newPassword.length > 72 ||
       Buffer.byteLength(newPassword, 'utf8') > 72
     ) {
