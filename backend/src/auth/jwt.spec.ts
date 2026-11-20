@@ -4,9 +4,54 @@ import { JwtStrategy } from './jwt.strategy';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 describe('JwtStrategy · validate', () => {
-  it('convierte el payload del token en el usuario de la petición', () => {
-    const estrategia = new JwtStrategy();
-    expect(estrategia.validate({ sub: 9, nombre: 'Ana' })).toEqual({ id: 9, nombre: 'Ana' });
+  it('convierte el payload del token en el usuario de la petición', async () => {
+    const usuariosRepo = {
+      findOne: jest.fn().mockResolvedValue({
+        id: 9,
+        nombre: 'Ana',
+        rol: 'tecnico',
+        activo: true,
+      }),
+    };
+
+    const estrategia = new JwtStrategy(usuariosRepo as any);
+
+    await expect(
+      estrategia.validate({ sub: 9, nombre: 'Ana' }),
+    ).resolves.toEqual({
+      id: 9,
+      nombre: 'Ana',
+      rol: 'tecnico',
+    });
+  });
+
+  it('rechaza usuarios desactivados', async () => {
+    const usuariosRepo = {
+      findOne: jest.fn().mockResolvedValue({
+        id: 9,
+        nombre: 'Ana',
+        rol: 'tecnico',
+        activo: false,
+      }),
+    };
+
+    const estrategia = new JwtStrategy(usuariosRepo as any);
+
+    await expect(
+      estrategia.validate({ sub: 9, nombre: 'Ana' }),
+    ).rejects.toThrow('La cuenta está inactiva o ya no existe');
+  });
+
+  it('rechaza usuarios que ya no existen', async () => {
+    const usuariosRepo = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
+    const estrategia = new JwtStrategy(usuariosRepo as any);
+
+    await expect(
+      estrategia.validate({ sub: 9, nombre: 'Ana' }),
+    ).rejects.toThrow('La cuenta está inactiva o ya no existe');
   });
 });
 
