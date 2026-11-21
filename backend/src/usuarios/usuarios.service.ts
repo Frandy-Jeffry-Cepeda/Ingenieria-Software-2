@@ -47,8 +47,11 @@ export class UsuariosService {
     const rol = dto.rol || RolUsuario.EMPLEADO;
     const requierePassword = rol === RolUsuario.ADMINISTRADOR || rol === RolUsuario.TECNICO;
     const password = dto.password;
-    if (requierePassword && !password) {
-      throw new BadRequestException('Un administrador o técnico necesita contraseña');
+    if (requierePassword) {
+      if (!password) {
+        throw new BadRequestException('Un administrador o técnico necesita contraseña');
+      }
+      this.validarContrasena(password);
     }
     const usuario = this.usuariosRepo.create({
       nombre: dto.nombre,
@@ -57,20 +60,106 @@ export class UsuariosService {
       rol,
     });
     if (requierePassword && password) {
-      usuario.passwordHash = bcrypt.hashSync(password, 10);
+      usuario.passwordHash = await bcrypt.hash(password, 12);
     }
     const guardado = await this.guardar(usuario);
     return this.usuariosRepo.findOneBy({ id: guardado.id });
   }
-
   async actualizar(id: number, dto: ActualizarUsuarioDto) {
-    const usuario = await this.usuariosRepo.findOneBy({ id });
+    // Incluir passwordHash porque la entidad lo tiene con select: false.
+    const usuario = await this.usuariosRepo
+      .createQueryBuilder('usuario')
+      .addSelect('usuario.passwordHash')
+      .where('usuario.id = :id', { id })
+      .getOne();
+
     if (!usuario) {
       throw new NotFoundException('Usuario no encontrado');
     }
-    Object.assign(usuario, dto);
+
+    const nuevoRol = dto.rol ?? usuario.rol;
+    const dejaDeSerAdministradorActivo =
+      usuario.rol === RolUsuario.ADMINISTRADOR &&
+      usuario.activo === true &&
+      (nuevoRol !== RolUsuario.ADMINISTRADOR || dto.activo === false);
+
+    // Evitar dejar el sistema sin administradores activos.
+    if (dejaDeSerAdministradorActivo) {
+      const cantidadAdministradoresActivos = await this.usuariosRepo.count({
+        where: {
+          rol: RolUsuario.ADMINISTRADOR,
+          activo: true,
+        },
+      });
+
+      if (cantidadAdministradoresActivos <= 1) {
+        throw new BadRequestException(
+          'No se puede desactivar o cambiar el rol del último administrador activo',
+        );
+      }
+    }
+
+    const requierePassword =
+      nuevoRol === RolUsuario.ADMINISTRADOR || nuevoRol === RolUsuario.TECNICO;
+
+    // Un empleado necesita credenciales nuevas al obtener acceso.
+    const promocionDesdeEmpleado =
+      usuario.rol === RolUsuario.EMPLEADO && requierePassword;
+
+    if (
+      requierePassword &&
+      (promocionDesdeEmpleado || !usuario.passwordHash) &&
+      !dto.password
+    ) {
+      throw new BadRequestException(
+        'Para asignar este rol debes proporcionar una contraseña',
+      );
+    }
+
+    if (dto.password !== undefined) {
+      if (!requierePassword) {
+        throw new BadRequestException(
+          'Solo los técnicos y administradores pueden tener contraseña',
+        );
+      }
+
+      this.validarContrasena(dto.password);
+      usuario.passwordHash = await bcrypt.hash(dto.password, 12);
+    }
+
+    // Actualizar únicamente los campos permitidos.
+    if (dto.nombre !== undefined) {
+      usuario.nombre = dto.nombre;
+    }
+    if (dto.email !== undefined) {
+      usuario.email = dto.email;
+    }
+    if (dto.departamento !== undefined) {
+      usuario.departamento = dto.departamento;
+    }
+    if (dto.activo !== undefined) {
+      usuario.activo = dto.activo;
+    }
+    usuario.rol = nuevoRol;
+
     await this.guardar(usuario);
+    // Devolver los datos sin exponer el hash de la contraseña.
     return this.usuariosRepo.findOneBy({ id });
+  }
+
+  // Aplicar la misma regla a la creación y al cambio de credenciales.
+  private validarContrasena(password: string): void {
+    if (password.length < 12 || !password.trim()) {
+      throw new BadRequestException(
+        'La contraseña debe tener al menos 12 caracteres',
+      );
+    }
+
+    if (password.length > 72 || Buffer.byteLength(password, 'utf8') > 72) {
+      throw new BadRequestException(
+        'La contraseña no puede superar 72 caracteres ni 72 bytes',
+      );
+    }
   }
 
   private async guardar(usuario: Usuario) {

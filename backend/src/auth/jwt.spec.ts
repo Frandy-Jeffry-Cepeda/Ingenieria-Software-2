@@ -14,7 +14,7 @@ describe('JwtStrategy · validate', () => {
       }),
     };
 
-    const estrategia = new JwtStrategy(usuariosRepo as any);
+    const estrategia = new JwtStrategy(usuariosRepo as unknown as ConstructorParameters<typeof JwtStrategy>[0]);
 
     await expect(
       estrategia.validate({ sub: 9, nombre: 'Ana' }),
@@ -35,7 +35,7 @@ describe('JwtStrategy · validate', () => {
       }),
     };
 
-    const estrategia = new JwtStrategy(usuariosRepo as any);
+    const estrategia = new JwtStrategy(usuariosRepo as unknown as ConstructorParameters<typeof JwtStrategy>[0]);
 
     await expect(
       estrategia.validate({ sub: 9, nombre: 'Ana' }),
@@ -47,7 +47,7 @@ describe('JwtStrategy · validate', () => {
       findOne: jest.fn().mockResolvedValue(null),
     };
 
-    const estrategia = new JwtStrategy(usuariosRepo as any);
+    const estrategia = new JwtStrategy(usuariosRepo as unknown as ConstructorParameters<typeof JwtStrategy>[0]);
 
     await expect(
       estrategia.validate({ sub: 9, nombre: 'Ana' }),
