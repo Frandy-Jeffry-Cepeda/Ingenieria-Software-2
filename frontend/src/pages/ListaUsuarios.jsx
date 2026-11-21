@@ -131,12 +131,12 @@ function ListaUsuarios() {
     }
 
     if (rolConAcceso && password) {
-      if (password.length < 6 || !password.trim()) {
-        setErrorFormulario('La contraseña debe tener al menos 6 caracteres.');
+      if (password.length < 12 || !password.trim()) {
+        setErrorFormulario('La contraseña debe tener al menos 12 caracteres.');
         return;
       }
-      if (new TextEncoder().encode(password).length > 72) {
-        setErrorFormulario('La contraseña no puede superar 72 bytes.');
+      if (password.length > 72 || new TextEncoder().encode(password).length > 72) {
+        setErrorFormulario('La contraseña no puede superar 72 caracteres ni 72 bytes.');
         return;
       }
     }
@@ -354,13 +354,14 @@ function ListaUsuarios() {
                     value={form.password}
                     onChange={(e) => actualizarCampo('password', e.target.value)}
                     disabled={guardando}
-                    minLength={passwordObligatoria ? 6 : undefined}
+                    minLength={passwordObligatoria ? 12 : undefined}
+                    maxLength={72}
                     required={passwordObligatoria}
                   />
                   <Form.Text className="text-muted">
                     {passwordObligatoria
-                      ? 'Obligatoria para habilitar el acceso. Mínimo 6 caracteres y máximo 72 bytes.'
-                      : 'Opcional. Déjala vacía para conservar la contraseña actual.'}
+                      ? 'Obligatoria para habilitar el acceso. Entre 12 y 72 caracteres, sin superar 72 bytes.'
+                      : 'Opcional. Si la cambias, utiliza entre 12 y 72 caracteres (máximo 72 bytes). Déjala vacía para conservar la contraseña actual.'}
                   </Form.Text>
                 </Form.Group>
               )}
