@@ -117,6 +117,19 @@ describe('API de Inventario TI (e2e)', () => {
   });
 
   describe('Ciclo de vida de un equipo', () => {
+    it('un técnico no puede dar de baja un equipo: solo el administrador (403)', async () => {
+      const clave = `Tec-${sufijo}-clave-segura`;
+      const correo = `tec-baja-${sufijo}@ti.com`;
+      const alta = await auth(http().post('/usuarios')).send({ nombre: 'Técnico Baja', email: correo, rol: 'tecnico', password: clave });
+      expect(alta.status).toBe(201);
+      const login = await http().post('/auth/login').send({ email: correo, password: clave });
+      expect(login.status).toBe(201);
+      const id = equipos[0].id;
+      const r = await http().post(`/equipos/${id}/baja`).set('Authorization', `Bearer ${login.body.token}`).send({ motivo: 'obsolescencia' });
+      expect(r.status).toBe(403);
+      expect((await auth(http().get(`/equipos/${id}`))).body.estado).toBe('disponible');
+    });
+
     it('entrega, rechaza la baja de un equipo entregado, devuelve y da de baja', async () => {
       const id = equipos[0].id;
       expect((await auth(http().post(`/equipos/${id}/entrega`)).send({ usuarioId: empleadoId })).status).toBe(201);

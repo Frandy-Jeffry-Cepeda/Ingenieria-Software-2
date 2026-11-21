@@ -85,6 +85,8 @@ export class EquiposController {
     return this.equiposService.devolver(id, dto, req.user.id);
   }
 
+  // Separación de funciones (A2/A3): solo el administrador da de baja un equipo.
+  @Roles(RolUsuario.ADMINISTRADOR)
   @Post(':id/baja')
   darDeBaja(
     @Param('id', ParseIntPipe) id: number,

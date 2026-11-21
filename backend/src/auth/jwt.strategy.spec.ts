@@ -3,6 +3,8 @@ import { Repository } from 'typeorm';
 import { JwtStrategy } from './jwt.strategy';
 import { RolUsuario, Usuario } from '../usuarios/usuario.entity';
 
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'clave-solo-para-pruebas-unitarias';
+
 describe('JwtStrategy · validación de cuenta activa', () => {
   const crear = (usuario: Partial<Usuario> | null) => {
     const repo = { findOne: jest.fn().mockResolvedValue(usuario) } as unknown as Repository<Usuario>;

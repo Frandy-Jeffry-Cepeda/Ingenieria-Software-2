@@ -15,9 +15,13 @@ import ModalEntrega from '../components/ModalEntrega';
 import ModalBaja from '../components/ModalBaja';
 import ModalMantenimiento from '../components/ModalMantenimiento';
 import ListaOrdenes from '../components/ListaOrdenes';
+import { useAuth } from '../context/AuthContext';
 
 function DetalleEquipo() {
   const { id } = useParams();
+  const { rol } = useAuth();
+  // Solo el administrador puede dar de baja un equipo (el backend responde 403 al técnico).
+  const puedeDarDeBaja = rol === 'administrador';
   const [equipo, setEquipo] = useState(null);
   const [movimientos, setMovimientos] = useState([]);
   const [error, setError] = useState('');
@@ -142,9 +146,11 @@ function DetalleEquipo() {
                     <Button className="me-2" onClick={() => setMostrarEntrega(true)}>
                       Entregar
                     </Button>
-                    <Button variant="danger" className="me-2" onClick={() => setMostrarBaja(true)}>
-                      Dar de baja
-                    </Button>
+                    {puedeDarDeBaja && (
+                      <Button variant="danger" className="me-2" onClick={() => setMostrarBaja(true)}>
+                        Dar de baja
+                      </Button>
+                    )}
                     <Button variant="warning" className="me-2" onClick={() => setMostrarMantenimiento(true)}>
                       Enviar a mantenimiento
                     </Button>

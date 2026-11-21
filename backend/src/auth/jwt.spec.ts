@@ -3,6 +3,8 @@ import { Reflector } from '@nestjs/core';
 import { JwtStrategy } from './jwt.strategy';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'clave-solo-para-pruebas-unitarias';
+
 describe('JwtStrategy · validate', () => {
   it('convierte el payload del token en el usuario de la petición', async () => {
     const usuariosRepo = {
