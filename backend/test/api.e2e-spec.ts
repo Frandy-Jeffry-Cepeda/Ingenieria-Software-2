@@ -250,4 +250,71 @@ it('no entrega equipos a técnicos ni a empleados inexistentes (400)', async () 
       expect(movs.body.filter((m: { tipo: string }) => m.tipo === 'entrega')).toHaveLength(1);
     });
   });
+
+  // E4, paquete 2.4: bitácora de accesos (casos BA-01 a BA-07).
+  describe('Bitácora de accesos', () => {
+    type Registro = { email: string; resultado: string; motivo: string | null; usuario: { id: number } | null };
+    const accesos = async () => (await auth(http().get('/auth/accesos?limite=200'))).body as Registro[];
+    const clave = `Bitacora-${sufijo}-Clave!`;
+    const correo = `tec-bitacora-${sufijo}@ti.com`;
+    let tecnicoId: number;
+
+    beforeAll(async () => {
+      const alta = await auth(http().post('/usuarios')).send({ nombre: 'Técnico Bitácora', email: correo, rol: 'tecnico', password: clave });
+      expect(alta.status).toBe(201);
+      tecnicoId = alta.body.id;
+    });
+
+    it('BA-01: un login válido queda como EXITO con la cuenta', async () => {
+      expect((await http().post('/auth/login').send({ email: correo, password: clave })).status).toBe(201);
+      const r = (await accesos()).find((a) => a.email === correo && a.resultado === 'EXITO');
+      expect(r?.usuario?.id).toBe(tecnicoId);
+      expect(r?.motivo).toBeNull();
+    });
+
+    it('BA-02: una contraseña incorrecta queda como FALLIDO', async () => {
+      expect((await http().post('/auth/login').send({ email: correo, password: 'no-es-la-clave' })).status).toBe(401);
+      const r = (await accesos()).find((a) => a.email === correo && a.resultado === 'FALLIDO');
+      expect(r?.motivo).toBe('contrasena_incorrecta');
+    });
+
+    it('BA-03: una cuenta inexistente queda como FALLIDO sin usuario', async () => {
+      const nadie = `nadie-${sufijo}@ti.com`;
+      expect((await http().post('/auth/login').send({ email: nadie, password: 'x' })).status).toBe(401);
+      const r = (await accesos()).find((a) => a.email === nadie);
+      expect(r).toMatchObject({ resultado: 'FALLIDO', motivo: 'cuenta_inexistente', usuario: null });
+    });
+
+    it('BA-04: una cuenta desactivada es rechazada y queda como FALLIDO', async () => {
+      expect((await auth(http().patch(`/usuarios/${tecnicoId}`)).send({ activo: false })).status).toBe(200);
+      expect((await http().post('/auth/login').send({ email: correo, password: clave })).status).toBe(401);
+      const r = (await accesos()).find((a) => a.email === correo && a.motivo === 'cuenta_inactiva');
+      expect(r?.resultado).toBe('FALLIDO');
+    });
+
+    it('BA-05: cada intento consecutivo deja su propio registro', async () => {
+      const otro = `consecutivo-${sufijo}@ti.com`;
+      for (let i = 0; i < 3; i++) await http().post('/auth/login').send({ email: otro, password: 'x' });
+      expect((await accesos()).filter((a) => a.email === otro)).toHaveLength(3);
+    });
+
+    it('BA-06: solo el administrador consulta la bitácora; un técnico recibe 403', async () => {
+      const claveTec = `Lector-${sufijo}-Clave!`;
+      const correoTec = `tec-lector-${sufijo}@ti.com`;
+      await auth(http().post('/usuarios')).send({ nombre: 'Técnico Lector', email: correoTec, rol: 'tecnico', password: claveTec });
+      const login = await http().post('/auth/login').send({ email: correoTec, password: claveTec });
+      const r = await http().get('/auth/accesos').set('Authorization', `Bearer ${login.body.token}`);
+      expect(r.status).toBe(403);
+      expect((await http().get('/auth/accesos')).status).toBe(401);
+    });
+
+    it('BA-07: la bitácora no expone contraseñas, hashes ni tokens', async () => {
+      const r = await auth(http().get('/auth/accesos?limite=200'));
+      const texto = JSON.stringify(r.body);
+      expect(texto).not.toContain(clave);
+      expect(texto).not.toContain('no-es-la-clave');
+      expect(texto).not.toMatch(/password|passwordHash|token|\$2[aby]\$/i);
+    });
+  });
 });
+

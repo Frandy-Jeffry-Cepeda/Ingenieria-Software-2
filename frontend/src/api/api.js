@@ -36,6 +36,8 @@ export const login = (email, password) =>
 
 // Perfil actualizado: el backend revalida la sesión y devuelve el rol actual.
 export const getMiCuenta = () => api.get('/auth/me').then((r) => r.data);
+export const getAccesos = (limite = 100) =>
+  api.get('/auth/accesos', { params: { limite } }).then((r) => r.data);
 
 export const cambiarContrasena = (currentPassword, newPassword) =>
   api.post(

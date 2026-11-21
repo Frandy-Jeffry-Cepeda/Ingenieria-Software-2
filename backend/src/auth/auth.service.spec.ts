@@ -4,6 +4,9 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { Usuario, RolUsuario } from '../usuarios/usuario.entity';
+import { BitacoraAccesosService } from './bitacora/bitacora-accesos.service';
+
+const bitacoraFalsa = () => ({ registrar: jest.fn(async () => undefined) }) as unknown as BitacoraAccesosService;
 
 // Pruebas unitarias del inicio de sesión (E4, paquete 2.6).
 describe('AuthService · login', () => {
@@ -11,7 +14,7 @@ describe('AuthService · login', () => {
   const crear = (usuario: Partial<Usuario> | null) => {
     const repo = { findOne: jest.fn(async () => usuario) } as unknown as Repository<Usuario>;
     const jwt = { sign: jest.fn(() => 'token-firmado') } as unknown as JwtService;
-    return { servicio: new AuthService(repo, jwt), repo, jwt };
+    return { servicio: new AuthService(repo, jwt, bitacoraFalsa()), repo, jwt };
   };
 
   it('devuelve un token con sub y nombre cuando las credenciales son correctas', async () => {
@@ -71,6 +74,7 @@ describe('AuthService - changePassword', () => {
     const servicio = new AuthService(
       repoMock as unknown as Repository<Usuario>,
       jwtMock as unknown as JwtService,
+      bitacoraFalsa(),
     );
 
     return {
@@ -226,5 +230,34 @@ describe('AuthService - changePassword', () => {
         passwordNueva,
       ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+});
+
+// Registro en la bitácora de accesos desde el login (E4, paquete 2.4).
+describe('AuthService · bitácora de accesos', () => {
+  const hash = bcrypt.hashSync('clave-de-prueba', 4);
+  const crear = (usuario: Partial<Usuario> | null) => {
+    const repo = { findOne: jest.fn(async () => usuario) } as unknown as Repository<Usuario>;
+    const jwt = { sign: jest.fn(() => 'token-firmado') } as unknown as JwtService;
+    const registrar = jest.fn(async () => undefined);
+    const servicio = new AuthService(repo, jwt, { registrar } as unknown as BitacoraAccesosService);
+    return { servicio, registrar };
+  };
+
+  it('registra EXITO con la cuenta y la IP (BA-01)', async () => {
+    const { servicio, registrar } = crear({ id: 5, nombre: 'T', activo: true, rol: RolUsuario.TECNICO, passwordHash: hash });
+    await servicio.login('t@ti.com', 'clave-de-prueba', '10.0.0.9');
+    expect(registrar).toHaveBeenCalledWith({ email: 't@ti.com', resultado: 'EXITO', usuarioId: 5, ip: '10.0.0.9' });
+  });
+
+  it.each([
+    ['contraseña incorrecta (BA-02)', { id: 5, activo: true, rol: RolUsuario.TECNICO, passwordHash: hash }, 'otra', 'contrasena_incorrecta', 5],
+    ['cuenta inexistente (BA-03)', null, 'clave-de-prueba', 'cuenta_inexistente', null],
+    ['cuenta desactivada (BA-04)', { id: 6, activo: false, rol: RolUsuario.TECNICO, passwordHash: hash }, 'clave-de-prueba', 'cuenta_inactiva', 6],
+    ['empleado sin acceso', { id: 7, activo: true, rol: RolUsuario.EMPLEADO, passwordHash: null }, 'x', 'rol_sin_acceso', 7],
+  ])('registra FALLIDO por %s y responde 401 sin revelar el motivo', async (_caso, usuario, clave, motivo, usuarioId) => {
+    const { servicio, registrar } = crear(usuario as Partial<Usuario> | null);
+    await expect(servicio.login('t@ti.com', clave as string)).rejects.toThrow('Credenciales inválidas');
+    expect(registrar).toHaveBeenCalledWith(expect.objectContaining({ resultado: 'FALLIDO', motivo, usuarioId }));
   });
 });

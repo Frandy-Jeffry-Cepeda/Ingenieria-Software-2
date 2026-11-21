@@ -10,10 +10,12 @@ import { JwtStrategy } from './jwt.strategy';
 import { obtenerJwtSecret } from './jwt-secret';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
+import { RegistroAcceso } from './bitacora/registro-acceso.entity';
+import { BitacoraAccesosService } from './bitacora/bitacora-accesos.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Usuario]),
+    TypeOrmModule.forFeature([Usuario, RegistroAcceso]),
     PassportModule,
     JwtModule.registerAsync({
       useFactory: () => ({
@@ -25,6 +27,7 @@ import { RolesGuard } from './roles.guard';
   controllers: [AuthController],
   providers: [
     AuthService,
+    BitacoraAccesosService,
     JwtStrategy,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
