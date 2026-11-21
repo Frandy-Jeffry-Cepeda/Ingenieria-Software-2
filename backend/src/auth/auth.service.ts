@@ -4,30 +4,38 @@ import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { Usuario, RolUsuario } from '../usuarios/usuario.entity';
+import { BitacoraAccesosService, MotivoRechazo } from './bitacora/bitacora-accesos.service';
+import { ResultadoAcceso } from './bitacora/registro-acceso.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(Usuario) private usuariosRepo: Repository<Usuario>,
     private jwtService: JwtService,
+    private bitacora: BitacoraAccesosService,
   ) {}
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string, ip?: string) {
     const usuario = await this.usuariosRepo.findOne({
       where: { email },
       select: { id: true, nombre: true, activo: true, passwordHash: true, rol: true },
     });
-    if (
-      !usuario ||
-      !usuario.activo ||
-      ![RolUsuario.ADMINISTRADOR, RolUsuario.TECNICO].includes(usuario.rol) ||
-      !usuario.passwordHash ||
-      !bcrypt.compareSync(password, usuario.passwordHash)
-    ) {
+    // E4, paquete 2.4: se identifica el motivo solo para la bitácora; al cliente
+    // siempre se le responde lo mismo para no revelar qué cuentas existen.
+    let motivo: MotivoRechazo | null = null;
+    if (!usuario) motivo = 'cuenta_inexistente';
+    else if (!usuario.activo) motivo = 'cuenta_inactiva';
+    else if (![RolUsuario.ADMINISTRADOR, RolUsuario.TECNICO].includes(usuario.rol) || !usuario.passwordHash) motivo = 'rol_sin_acceso';
+    else if (!bcrypt.compareSync(password, usuario.passwordHash)) motivo = 'contrasena_incorrecta';
+
+    if (motivo) {
+      await this.bitacora.registrar({ email, resultado: ResultadoAcceso.FALLIDO, usuarioId: usuario?.id ?? null, motivo, ip });
       throw new UnauthorizedException('Credenciales inválidas');
     }
-    const token = this.jwtService.sign({ sub: usuario.id, nombre: usuario.nombre, rol: usuario.rol });
-    return { token, nombre: usuario.nombre, rol: usuario.rol };
+    const cuenta = usuario as Usuario;
+    const token = this.jwtService.sign({ sub: cuenta.id, nombre: cuenta.nombre, rol: cuenta.rol });
+    await this.bitacora.registrar({ email, resultado: ResultadoAcceso.EXITO, usuarioId: cuenta.id, ip });
+    return { token, nombre: cuenta.nombre, rol: cuenta.rol };
   }
 
   // E4 - paquete 2.3: validar contraseña actual antes de sustituir el hash.

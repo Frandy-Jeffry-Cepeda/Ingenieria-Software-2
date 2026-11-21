@@ -1,10 +1,13 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import { Body, Controller, DefaultValuePipe, Get, ParseIntPipe, Post, Query, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './login.dto';
 import { ChangePasswordDto } from './change-password.dto';
 import { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
 import { Public } from './public.decorator';
 import { RolUsuario } from '../usuarios/usuario.entity';
+import { Roles } from './roles.decorator';
+import { BitacoraAccesosService } from './bitacora/bitacora-accesos.service';
 
 interface SolicitudAutenticada {
   user: {
@@ -16,12 +19,22 @@ interface SolicitudAutenticada {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private bitacora: BitacoraAccesosService,
+  ) {}
 
   @Public()
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.password);
+  login(@Body() dto: LoginDto, @Req() req: Request) {
+    return this.authService.login(dto.email, dto.password, req.ip);
+  }
+
+  // E4, paquete 2.4: consulta de la bitácora de accesos, solo para administradores.
+  @Roles(RolUsuario.ADMINISTRADOR)
+  @Get('accesos')
+  accesos(@Query('limite', new DefaultValuePipe(100), ParseIntPipe) limite: number) {
+    return this.bitacora.listar(limite);
   }
 
   // No lleva @Public(): el JwtAuthGuard global exige un JWT válido.

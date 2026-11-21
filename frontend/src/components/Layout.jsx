@@ -45,6 +45,12 @@ function Layout() {
                   {esAdministrador ? 'Administración de usuarios' : 'Usuarios'}
                 </Nav.Link>
               )}
+
+              {esAdministrador && (
+                <Nav.Link as={Link} to="/accesos">
+                  Bitácora de accesos
+                </Nav.Link>
+              )}
             </Nav>
 
             <Nav>
