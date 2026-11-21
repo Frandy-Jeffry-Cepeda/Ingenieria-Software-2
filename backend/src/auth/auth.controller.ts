@@ -44,4 +44,25 @@ export class AuthController {
       dto.newPassword,
     );
   }
+
+  // No lleva @Public(): el JwtAuthGuard global exige un JWT válido.
+  // JwtStrategy consulta la base de datos en cada petición y entrega
+  // el nombre y el rol actuales en request.user.
+  @Get('me')
+  me(@Req() request: SolicitudAutenticada) {
+    const { id, nombre, rol } = request.user;
+    return { id, nombre, rol };
+  }
+  // Protegido por el JwtAuthGuard global, igual que GET /auth/me.
+  @Post('change-password')
+  changePassword(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(
+      request.user.id,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+  }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Modal, Form, Button } from 'react-bootstrap';
+import PropTypes from "prop-types";
 
 function ModalMantenimiento({ show, onCerrar, onEnviarMantenimiento }) {
   const [descripcion, setDescripcion] = useState('');
@@ -62,5 +63,9 @@ function ModalMantenimiento({ show, onCerrar, onEnviarMantenimiento }) {
     </Modal>
   );
 }
-
+ModalMantenimiento.propTypes = {
+  show: PropTypes.bool.isRequired,
+  onCerrar: PropTypes.func.isRequired,
+  onEnviarMantenimiento: PropTypes.func.isRequired,
+};
 export default ModalMantenimiento;

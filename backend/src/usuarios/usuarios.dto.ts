@@ -1,4 +1,12 @@
-import { IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { RolUsuario } from './usuario.entity';
 
 export class CrearUsuarioDto {
@@ -39,4 +47,14 @@ export class ActualizarUsuarioDto {
   @IsOptional()
   @IsBoolean()
   activo?: boolean;
+
+  // Permite modificar el rol del usuario.
+  @IsOptional()
+  @IsEnum(RolUsuario)
+  rol?: RolUsuario;
+
+  // Permite asignar una contraseña cuando sea necesario.
+  @IsOptional()
+  @IsString()
+  password?: string;
 }

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // En producción (Docker/Coolify) nginx expone el backend bajo /api.
-// Se puede sobreescribir en build con VITE_API_URL si el backend vive en otro dominio.
+// Se puede sobrescribir en build con VITE_API_URL si el backend vive en otro dominio.
 const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || '/api' });
 
 api.interceptors.request.use((config) => {
@@ -15,17 +15,39 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 && window.location.pathname !== '/login') {
+    const esErrorAutenticacion = err.response?.status === 401;
+    const omitirRedireccion = err.config?.skipAuthRedirect === true;
+    const estaEnLogin = window.location.pathname === '/login';
+
+    if (esErrorAutenticacion && !omitirRedireccion && !estaEnLogin) {
       localStorage.removeItem('token');
       localStorage.removeItem('nombre');
+      localStorage.removeItem('rol');
+
       window.location.href = '/login';
     }
+
     return Promise.reject(err);
-  }
+  },
 );
 
 export const login = (email, password) =>
   api.post('/auth/login', { email, password }).then((r) => r.data);
+
+// Perfil actualizado: el backend revalida la sesión y devuelve el rol actual.
+export const getMiCuenta = () => api.get('/auth/me').then((r) => r.data);
+
+export const cambiarContrasena = (currentPassword, newPassword) =>
+  api.post(
+    '/auth/change-password',
+    {
+      currentPassword,
+      newPassword,
+    },
+    {
+      skipAuthRedirect: true,
+    },
+  ).then((r) => r.data);
 
 export const getUsuarios = (rol) =>
   api.get('/usuarios', { params: rol ? { rol } : {} }).then((r) => r.data);

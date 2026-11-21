@@ -16,7 +16,7 @@ function Login() {
     setError('');
     try {
       const datos = await login(email, password);
-      guardarSesion(datos.token, datos.nombre);
+guardarSesion(datos.token, datos.nombre, datos.rol);
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.message || 'No se pudo iniciar sesión');

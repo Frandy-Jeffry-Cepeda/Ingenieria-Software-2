@@ -8,6 +8,7 @@ import DetalleEquipo from './pages/DetalleEquipo';
 import RegistrarCompra from './pages/RegistrarCompra';
 import ListaUsuarios from './pages/ListaUsuarios';
 import DetalleUsuario from './pages/DetalleUsuario';
+import CambiarContrasena from './pages/CambiarContrasena';
 
 function App() {
   return (
@@ -21,6 +22,10 @@ function App() {
           <Route path="/compras/nueva" element={<RegistrarCompra />} />
           <Route path="/usuarios" element={<ListaUsuarios />} />
           <Route path="/usuarios/:id" element={<DetalleUsuario />} />
+          <Route
+            path="/mi-cuenta/cambiar-contrasena"
+            element={<CambiarContrasena />}
+          />
         </Route>
       </Route>
     </Routes>
