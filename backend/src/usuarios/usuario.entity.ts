@@ -1,6 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 export enum RolUsuario {
+  ADMINISTRADOR = 'administrador',
   EMPLEADO = 'empleado',
   TECNICO = 'tecnico',
 }
