@@ -6,7 +6,6 @@ const colores = {
   entregado: 'primary',
   en_mantenimiento: 'warning',
   de_baja: 'secondary',
-  en_mantenimiento: 'warning',
 };
 
 const textos = {
@@ -14,7 +13,6 @@ const textos = {
   entregado: 'Entregado',
   en_mantenimiento: 'En mantenimiento',
   de_baja: 'De baja',
-  en_mantenimiento: 'En mantenimiento',
 };
 
 function EstadoBadge({ estado }) {
