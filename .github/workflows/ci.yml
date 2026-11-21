@@ -43,7 +43,6 @@ jobs:
       JWT_SECRET: clave-solo-para-ci
       # Técnico que crea el seed del proyecto; solo existe en la base temporal de CI.
       TEST_USER_EMAIL: admin@ti.com
-      TEST_USER_PASSWORD: admin123
     defaults:
       run:
         working-directory: backend
@@ -67,6 +66,13 @@ jobs:
 
       - name: Pruebas unitarias con cobertura
         run: npm run test:cov
+
+      - name: Generar credencial temporal segura para CI
+        shell: bash
+        run: |
+          CI_PASSWORD="$(node -e "process.stdout.write(require('node:crypto').randomBytes(24).toString('hex'))")"
+          echo "SEED_ADMIN_PASSWORD=$CI_PASSWORD" >> "$GITHUB_ENV"
+          echo "TEST_USER_PASSWORD=$CI_PASSWORD" >> "$GITHUB_ENV"
 
       - name: Cargar datos de prueba (seed)
         run: npm run seed

@@ -13,8 +13,8 @@ export class ChangePasswordDto {
 
   @IsString()
   @IsNotEmpty()
-  @MinLength(12, {
-    message: 'La nueva contraseña debe tener al menos 12 caracteres.',
+  @MinLength(6, {
+    message: 'La nueva contraseña debe tener al menos 6 caracteres.',
   })
   @MaxLength(72, {
     message: 'La nueva contraseña no debe superar los 72 caracteres.',
