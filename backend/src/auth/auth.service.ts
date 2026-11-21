@@ -1,9 +1,4 @@
-
-import {
-  BadRequestException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
@@ -13,51 +8,29 @@ import { Usuario, RolUsuario } from '../usuarios/usuario.entity';
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(Usuario)
-    private usuariosRepo: Repository<Usuario>,
+    @InjectRepository(Usuario) private usuariosRepo: Repository<Usuario>,
     private jwtService: JwtService,
   ) {}
 
-  // ==========================================
-  // INICIO DE SESIÓN
-  // ==========================================
   async login(email: string, password: string) {
     const usuario = await this.usuariosRepo.findOne({
-      where: {
-        email,
-        rol: RolUsuario.TECNICO,
-      },
-      select: {
-        id: true,
-        nombre: true,
-        activo: true,
-        passwordHash: true,
-      },
+      where: { email },
+      select: { id: true, nombre: true, activo: true, passwordHash: true, rol: true },
     });
-
     if (
       !usuario ||
       !usuario.activo ||
+      ![RolUsuario.ADMINISTRADOR, RolUsuario.TECNICO].includes(usuario.rol) ||
       !usuario.passwordHash ||
-      !(await bcrypt.compare(password, usuario.passwordHash))
+      !bcrypt.compareSync(password, usuario.passwordHash)
     ) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
-
-    const token = this.jwtService.sign({
-      sub: usuario.id,
-      nombre: usuario.nombre,
-    });
-
-    return {
-      token,
-      nombre: usuario.nombre,
-    };
+    const token = this.jwtService.sign({ sub: usuario.id, nombre: usuario.nombre, rol: usuario.rol });
+    return { token, nombre: usuario.nombre, rol: usuario.rol };
   }
 
-  // ==========================================
-  // CAMBIO DE CONTRASEÑA - E4, PAQUETE 2.3
-  // ==========================================
+  // E4 - paquete 2.3: validar contraseña actual antes de sustituir el hash.
   async changePassword(
     userId: number,
     currentPassword: string,
@@ -76,7 +49,7 @@ export class AuthService {
     // 2. Validar la nueva contraseña.
     if (
       typeof newPassword !== 'string' ||
-      newPassword.length < 6 ||
+      newPassword.length < 12 ||
       newPassword.length > 72 ||
       Buffer.byteLength(newPassword, 'utf8') > 72
     ) {
