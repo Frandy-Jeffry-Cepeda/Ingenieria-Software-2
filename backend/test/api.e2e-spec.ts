@@ -143,12 +143,37 @@ describe('API de Inventario TI (e2e)', () => {
       expect(r.body.every((m: { tecnico: { id: number } | null }) => m.tecnico !== null)).toBe(true);
     });
 
-    it('no entrega equipos a técnicos ni a empleados inexistentes (400)', async () => {
-      const id = equipos[1].id;
-      const tecnicos = (await auth(http().get('/usuarios?rol=tecnico'))).body;
-      expect((await auth(http().post(`/equipos/${id}/entrega`)).send({ usuarioId: tecnicos[0].id })).status).toBe(400);
-      expect((await auth(http().post(`/equipos/${id}/entrega`)).send({ usuarioId: 999999 })).status).toBe(400);
-    });
+
+it('no entrega equipos a técnicos ni a empleados inexistentes (400)', async () => {
+  const id = equipos[1].id;
+
+  // Crear un técnico propio para evitar depender de los datos del seed.
+  const tecnico = await auth(http().post('/usuarios')).send({
+    nombre: 'Tecnico E2E',
+    email: `tecnico-entrega-${sufijo}@ti.com`,
+    rol: 'tecnico',
+    password: `Clave-E2E-${sufijo}-Segura!`,
+  });
+
+  // Confirmar que el técnico de prueba se creó correctamente.
+  expect(tecnico.status).toBe(201);
+  expect(tecnico.body.rol).toBe('tecnico');
+
+  // Un equipo no puede entregarse a un técnico.
+  const entregaTecnico = await auth(
+    http().post(`/equipos/${id}/entrega`),
+  ).send({ usuarioId: tecnico.body.id });
+
+  expect(entregaTecnico.status).toBe(400);
+
+  // Tampoco puede entregarse a un usuario inexistente.
+  const entregaInexistente = await auth(
+    http().post(`/equipos/${id}/entrega`),
+  ).send({ usuarioId: 999999 });
+
+  expect(entregaInexistente.status).toBe(400);
+});
+
 
     it('no entrega equipos a un empleado desactivado (400)', async () => {
       const r = await auth(http().post('/usuarios')).send({ nombre: 'Inactivo', email: `inactivo-${sufijo}@empresa.com` });
