@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -42,5 +42,189 @@ describe('AuthService · login', () => {
   it('rechaza un correo que no corresponde a ningún técnico, con el mismo mensaje', async () => {
     const { servicio } = crear(null);
     await expect(servicio.login('nadie@ti.com', 'x')).rejects.toThrow('Credenciales inválidas');
+  });
+});
+
+// Pruebas del cambio de contraseña (E4, paquete 2.3).
+describe('AuthService - changePassword', () => {
+  const passwordActual = 'ClaveActual123!';
+  const passwordNueva = 'NuevaClaveSegura2026!';
+  const hashActual = bcrypt.hashSync(passwordActual, 4);
+
+  const crear = (
+    datos: Partial<Usuario> | null = {
+      id: 5,
+      activo: true,
+      passwordHash: hashActual,
+    },
+    affected = 1,
+  ) => {
+    const repoMock = {
+      findOne: jest.fn(async () => datos),
+      update: jest.fn(async () => ({ affected })),
+    };
+
+    const jwtMock = {
+      sign: jest.fn(() => 'token-firmado'),
+    };
+
+    const servicio = new AuthService(
+      repoMock as unknown as Repository<Usuario>,
+      jwtMock as unknown as JwtService,
+    );
+
+    return {
+      servicio,
+      repoMock,
+    };
+  };
+
+  // PRUEBA 1
+  it('cambia correctamente la contraseña', async () => {
+    const { servicio, repoMock } = crear();
+
+    const resultado = await servicio.changePassword(
+      5,
+      passwordActual,
+      passwordNueva,
+    );
+
+    expect(resultado).toEqual({
+      message: 'Contraseña actualizada correctamente',
+    });
+
+    expect(repoMock.update).toHaveBeenCalledWith(
+      { id: 5, activo: true },
+      {
+        passwordHash: expect.any(String),
+      },
+    );
+
+   const nuevoHash = (repoMock.update as jest.Mock)
+  .mock.calls[0][1].passwordHash as string;
+
+    expect(
+      await bcrypt.compare(passwordNueva, nuevoHash),
+    ).toBe(true);
+
+    expect(
+      await bcrypt.compare(passwordActual, nuevoHash),
+    ).toBe(false);
+  });
+
+  // PRUEBA 2
+  it('rechaza una contraseña actual incorrecta', async () => {
+    const { servicio, repoMock } = crear();
+
+    await expect(
+      servicio.changePassword(
+        5,
+        'ClaveIncorrecta123!',
+        passwordNueva,
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(repoMock.update).not.toHaveBeenCalled();
+  });
+
+  // PRUEBA 3
+  it('impide reutilizar la contraseña actual', async () => {
+    const { servicio, repoMock } = crear();
+
+    await expect(
+      servicio.changePassword(
+        5,
+        passwordActual,
+        passwordActual,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(repoMock.update).not.toHaveBeenCalled();
+  });
+
+  // PRUEBA 4
+  it('rechaza el cambio si el usuario está desactivado', async () => {
+    const { servicio, repoMock } = crear({
+      id: 5,
+      activo: false,
+      passwordHash: hashActual,
+    });
+
+    await expect(
+      servicio.changePassword(
+        5,
+        passwordActual,
+        passwordNueva,
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(repoMock.update).not.toHaveBeenCalled();
+  });
+
+  // PRUEBA 5
+  it('rechaza contraseñas nuevas menores de 12 caracteres', async () => {
+    const { servicio, repoMock } = crear();
+
+    await expect(
+      servicio.changePassword(
+        5,
+        passwordActual,
+        'Corta123!',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(repoMock.update).not.toHaveBeenCalled();
+  });
+
+  // PRUEBA 6
+  it('rechaza contraseñas que superan los 72 bytes', async () => {
+    const { servicio, repoMock } = crear();
+
+    const passwordLarga = 'á'.repeat(40);
+
+    await expect(
+      servicio.changePassword(
+        5,
+        passwordActual,
+        passwordLarga,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(repoMock.update).not.toHaveBeenCalled();
+  });
+
+  it('rechaza si no se proporciona contraseña actual', async () => {
+    const { servicio, repoMock } = crear();
+    await expect(servicio.changePassword(5, '', passwordNueva))
+      .rejects.toBeInstanceOf(BadRequestException);
+    expect(repoMock.findOne).not.toHaveBeenCalled();
+    expect(repoMock.update).not.toHaveBeenCalled();
+  });
+
+  it('rechaza cuentas inexistentes y no actualiza contraseñas', async () => {
+    const { servicio, repoMock } = crear(null);
+    await expect(servicio.changePassword(5, passwordActual, passwordNueva))
+      .rejects.toBeInstanceOf(UnauthorizedException);
+    expect(repoMock.update).not.toHaveBeenCalled();
+  });
+
+  // PRUEBA 7
+  it('rechaza el cambio si la actualización no afecta registros', async () => {
+    const { servicio } = crear(
+      {
+        id: 5,
+        activo: true,
+        passwordHash: hashActual,
+      },
+      0,
+    );
+
+    await expect(
+      servicio.changePassword(
+        5,
+        passwordActual,
+        passwordNueva,
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
