@@ -7,6 +7,7 @@ import { Usuario } from '../usuarios/usuario.entity';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
+import { obtenerJwtSecret } from './jwt-secret';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 
@@ -16,7 +17,7 @@ import { RolesGuard } from './roles.guard';
     PassportModule,
     JwtModule.registerAsync({
       useFactory: () => ({
-        secret: process.env.JWT_SECRET || 'secreto-universitario',
+        secret: obtenerJwtSecret(),
         signOptions: { expiresIn: '8h' },
       }),
     }),
